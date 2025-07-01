@@ -7,7 +7,6 @@ import {
   BookOpen,
   Star,
   ArrowRight,
-  CheckCircle,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -240,7 +239,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-gray-700 mb-6 italic">
-                  "{testimonial.content}"
+                  &ldquo;{testimonial.content}&rdquo;
                 </p>
                 <div>
                   <div className="font-semibold text-gray-900">
