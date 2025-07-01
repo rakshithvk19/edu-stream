@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, SyntheticEvent } from "react";
+import { useState, useRef, useEffect } from "react";
 import MuxUploader from "@mux/mux-uploader-react";
 
 const MAX_FILE_SIZE = 3 * 1024 * 1024 * 1024;
@@ -15,36 +15,26 @@ export default function UploadPage() {
   const [titleTouched, setTitleTouched] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  const uploaderRef = useRef<HTMLElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const uploaderRef = useRef<React.ComponentRef<typeof MuxUploader>>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Start upload when both endpoint and file are ready
+  // Trigger upload when we have both endpoint and file
   useEffect(() => {
     if (endpoint && file && uploaderRef.current && !isUploading) {
       setIsUploading(true);
-      // Trigger the upload by dispatching the file-ready event
-      setTimeout(() => {
-        const evt = new CustomEvent("file-ready", {
-          detail: file,
-          bubbles: true,
-          composed: true,
-        });
-        uploaderRef.current!.dispatchEvent(evt);
-      }, 100);
+
+      // Create a new FileList-like object and set it on the uploader
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+
+      // Access the underlying DOM element and set files
+      const uploaderElement =
+        uploaderRef.current as unknown as HTMLInputElement;
+      if (uploaderElement && uploaderElement.files !== undefined) {
+        uploaderElement.files = dataTransfer.files;
+      }
     }
   }, [endpoint, file, isUploading]);
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.size > MAX_FILE_SIZE) {
-        setError("File size exceeds 2GB limit.");
-        return;
-      }
-      setFile(selectedFile);
-      setError(null);
-    }
-  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -77,8 +67,13 @@ export default function UploadPage() {
 
       const { uploadUrl } = await res.json();
       setEndpoint(uploadUrl);
-    } catch (err: any) {
-      setError(err.message);
+      // Upload will be triggered by useEffect
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred.");
+      }
     }
   };
 
@@ -91,6 +86,27 @@ export default function UploadPage() {
     setIsUploading(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+    // Clear the uploader's files
+    if (uploaderRef.current) {
+      const uploaderElement =
+        uploaderRef.current as unknown as HTMLInputElement;
+      if (uploaderElement && uploaderElement.files !== undefined) {
+        uploaderElement.files = new DataTransfer().files; // Empty FileList
+      }
+    }
+  };
+
+  // Handle file selection from the custom file input
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        setError("File size exceeds 3GB limit.");
+        return;
+      }
+      setFile(selectedFile);
+      setError(null);
     }
   };
 
@@ -132,10 +148,10 @@ export default function UploadPage() {
         />
       </div>
 
-      {/* File selection */}
+      {/* Custom file input */}
       <div>
-        <label className="block text-white font-semibold mb-1">
-          Choose video file <span className="text-red-500">*</span>
+        <label className="block text-white font-semibold mb-2">
+          Choose Video File
         </label>
         <input
           ref={fileInputRef}
@@ -146,11 +162,36 @@ export default function UploadPage() {
           className="w-full px-4 py-2 border border-gray-600 bg-gray-900 text-white rounded file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
         />
         {file && (
-          <p className="text-sm text-gray-400 mt-1">
-            Selected: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+          <p className="mt-2 text-sm text-gray-300">
+            Selected: {file.name} ({(file.size / (1024 * 1024)).toFixed(1)} MB)
           </p>
         )}
       </div>
+
+      {/* Hidden Mux Uploader */}
+      <MuxUploader
+        ref={uploaderRef}
+        endpoint={endpoint}
+        maxFileSize={MAX_FILE_SIZE}
+        pausable
+        style={{ display: "none" }} // Hide the default UI
+        onProgress={(evt) => {
+          const pct = (evt as unknown as CustomEvent<number>).detail;
+          setProgress(Math.round(pct));
+        }}
+        onSuccess={() => {
+          setSuccess(true);
+          setIsUploading(false);
+        }}
+        onError={(evt) => {
+          const errorDetail = (
+            evt as unknown as CustomEvent<{ message: string }>
+          ).detail;
+          setError(errorDetail?.message || "Upload error");
+          setIsUploading(false);
+          setProgress(0);
+        }}
+      />
 
       {/* Upload button and progress */}
       {!isUploading ? (
@@ -172,42 +213,6 @@ export default function UploadPage() {
           <p className="text-center text-white">Uploading... {progress}%</p>
         </div>
       )}
-
-      {/* Hidden MuxUploader */}
-      <MuxUploader
-        ref={uploaderRef as any}
-        endpoint={endpoint}
-        maxFileSize={MAX_FILE_SIZE}
-        pausable={true}
-        style={{ display: "none" }}
-         onProgress={(evt) => {
-          const detail = (evt as any).detail;
-          
-          // The progress value is directly in detail as a number
-          let pct = detail;
-          
-          // If it's a decimal (0-1), convert to percentage
-          if (pct && pct <= 1) {
-            pct = pct * 100;
-          }
-          
-          // Ensure it's a valid number and clamp between 0-100
-          if (pct && !isNaN(pct)) {
-            setProgress(Math.round(Math.min(Math.max(pct, 0), 100)));
-          }
-        }}
-        onSuccess={() => {
-          setSuccess(true);
-          setIsUploading(false);
-          resetUpload();
-        }}
-        onError={(evt: SyntheticEvent) => {
-          setError((evt as any).detail.message || "Upload error");
-          setIsUploading(false);
-          setEndpoint(null);
-          setProgress(0);
-        }}
-      />
 
       {/* Success message */}
       {success && (

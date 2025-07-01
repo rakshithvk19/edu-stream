@@ -24,12 +24,17 @@ const supabase = createClient(
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
-function validate(body: any): VideoUploadRequest | null {
+function validate(body: VideoUploadRequest): VideoUploadRequest | null {
   if (!body || typeof body !== "object") return null;
 
   const { title, description } = body;
 
-  if (!title || typeof title !== "string" || !title.trim() || title.length > 255)
+  if (
+    !title ||
+    typeof title !== "string" ||
+    !title.trim() ||
+    title.length > 255
+  )
     return null;
 
   if (
@@ -59,7 +64,7 @@ export async function POST(
   req: NextRequest
 ): Promise<NextResponse<VideoUploadResponse | ErrorResponse>> {
   /* -- parse & validate -- */
-  let body: any;
+  let body: VideoUploadRequest;
   try {
     body = await req.json();
   } catch {
