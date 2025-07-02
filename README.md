@@ -1,20 +1,20 @@
 # EduStream
 
-EduStream is a lightweight Learning Management System (LMS) feature that allows users to upload videos with metadata (title, description) and stream them via a responsive interface. Built with Next.js, Tailwind CSS, Supabase, and Cloudflare Stream, this project is designed for small-scale educational platforms and is hosted on Vercel.
+EduStream is a lightweight Learning Management System (LMS) that allows users to upload videos and stream them via a responsive interface. Built with Next.js, Tailwind CSS, Supabase, and seamless video streaming powered by Mux, this project is designed for small-scale educational platforms and is hosted on Vercel.
 
 ## Features
 - **Video Upload**: Upload videos with metadata via `/upload` route.
-- **Video Streaming**: Stream videos in a responsive grid at `/videos` using Cloudflare Stream.
+- **Video Streaming**: Stream videos in a responsive grid at `/videos` using Mux Video Stream.
 - **Responsive UI**: Styled with Tailwind CSS for a modern, user-friendly experience.
 - **Database**: Supabase stores video metadata and supports optional authentication.
-- **Streaming**: Cloudflare Stream handles video storage, transcoding, and adaptive playback.
+- **Streaming**: Mux Video Stream handles video storage, transcoding, and adaptive playback.
 - **Hosting**: Deployed on Vercel for seamless scalability.
 
 ## Tech Stack
 - **Frontend**: Next.js (App Router) with Tailwind CSS
 - **Backend**: Next.js API routes
-- **Database**: Supabase 
-- **Streaming**: Cloudflare Stream
+- **Database**: Supabase for Auth + Mux Video for Video asset hosting
+- **Streaming**: Mux Video
 - **Hosting**: Vercel
 
 ## Project Structure
