@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import {
   Play,
   Upload,
@@ -76,18 +77,18 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <a
+              <Link
                 href="/videos"
                 className="text-gray-700 hover:text-blue-600 transition-colors"
               >
                 Browse Videos
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/upload"
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Upload Content
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -109,20 +110,20 @@ export default function HomePage() {
               professional-grade quality.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <a
+              <Link
                 href="/videos"
                 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg transform hover:-translate-y-1 transition-all duration-200 flex items-center"
               >
                 <Play className="w-5 h-5 mr-2" />
                 Explore Videos
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/upload"
                 className="bg-white text-gray-800 px-8 py-4 rounded-xl font-semibold border-2 border-gray-200 hover:border-blue-300 hover:shadow-lg transform hover:-translate-y-1 transition-all duration-200 flex items-center"
               >
                 <Upload className="w-5 h-5 mr-2" />
                 Start Uploading
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -264,19 +265,19 @@ export default function HomePage() {
             exceptional learning experiences.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
+            <Link
               href="/upload"
               className="bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
             >
               Get Started Now
               <ArrowRight className="w-5 h-5 ml-2" />
-            </a>
-            <a
+            </Link>
+            <Link
               href="/videos"
               className="bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-xl font-semibold border border-white/20 hover:bg-white/20 transition-colors"
             >
               View Demo
-            </a>
+            </Link>
           </div>
         </div>
       </section>
