@@ -1,6 +1,6 @@
-import * as videoDb from '@/lib/database/videos';
-import * as cloudflare from '@/lib/external/cloudflare';
-import type { VideoRecord, VideoStatus, CreateVideoData } from '@/lib/database/videos';
+import * as videoDb from '@/repositories/VideoRepository';
+import * as cloudflare from '@/services/CloudflareService';
+import type { VideoRecord, VideoStatus, CreateVideoData } from '@/repositories/VideoRepository';
 
 // Video service interfaces
 export interface CreateVideoRequest {

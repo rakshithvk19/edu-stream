@@ -8,8 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Upload as TusUpload } from "tus-js-client";
-
-const CHUNK_SIZE_UPLOAD = 50 * 1024 * 1024; // 50MB chunks (must be divisible by 256KiB)
+import { CHUNK_SIZE, TUS_RETRY_DELAYS } from '@/lib/constants/upload';
 
 interface UploadProgressPanelProps {
   formData: {
@@ -63,8 +62,8 @@ export default function UploadProgressPanel({
       // Create TUS upload instance with validated metadata
       const upload = new TusUpload(file, {
         endpoint: "/api/tus-upload",
-        chunkSize: CHUNK_SIZE_UPLOAD,
-        retryDelays: [0, 3000, 5000, 10000, 20000],
+        chunkSize: CHUNK_SIZE,
+        retryDelays: TUS_RETRY_DELAYS,
         metadata: {
           filename: file.name,
           filetype: file.type,

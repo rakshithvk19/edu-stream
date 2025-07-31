@@ -1,7 +1,7 @@
 import * as videoService from './VideoService';
-import { config } from '@/lib/config';
+
 import type { CloudflareStreamWebhookPayload } from '@/types/api/webhook';
-import type { VideoStatus } from '@/lib/database/videos';
+import type { VideoStatus } from '@/repositories/VideoRepository';
 
 // Webhook processing interfaces
 export interface WebhookProcessingResult {
@@ -18,7 +18,7 @@ export function verifyWebhookSignature(
   payload: string,
   signature: string | null
 ): boolean {
-  if (!config.cloudflare.webhookSecret) {
+  if (!process.env.CLOUDFLARE_STREAM_WEBHOOK_SECRET) {
     console.warn('Webhook secret not configured - signature verification skipped');
     return true; // Allow webhook if no secret is configured
   }
@@ -235,15 +235,15 @@ export function validateWebhookConfig(): {
   const warnings: string[] = [];
   const errors: string[] = [];
 
-  if (!config.cloudflare.webhookSecret) {
+  if (!process.env.CLOUDFLARE_STREAM_WEBHOOK_SECRET) {
     warnings.push('Webhook secret not configured - signature verification disabled');
   }
 
-  if (!config.cloudflare.apiToken) {
+  if (!process.env.CLOUDFLARE_API_TOKEN) {
     errors.push('Cloudflare API token not configured');
   }
 
-  if (!config.cloudflare.accountId) {
+  if (!process.env.CLOUDFLARE_ACCOUNT_ID) {
     errors.push('Cloudflare account ID not configured');
   }
 

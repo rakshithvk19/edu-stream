@@ -1,4 +1,4 @@
-import { config } from '@/lib/config';
+import { MAX_DURATION_SECONDS } from '@/lib/constants/upload';
 
 // Cloudflare Stream API interfaces
 export interface CloudflareUploadSession {
@@ -46,15 +46,15 @@ export async function createCloudflareUploadSession(
   const uploadMetadata = buildUploadMetadata({
     name: data.title,
     description: data.description || '',
-    maxDurationSeconds: config.upload.maxDurationSeconds.toString(),
+    maxDurationSeconds: MAX_DURATION_SECONDS.toString(),
   });
 
   const response = await fetch(
-    `${config.cloudflare.streamUrl}?direct_user=true`,
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
     {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.cloudflare.apiToken}`,
+        'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
         'Tus-Resumable': data.tusResumable,
         'Upload-Length': data.uploadLength.toString(),
         'Upload-Metadata': uploadMetadata,
@@ -86,11 +86,11 @@ export async function createCloudflareUploadSession(
  */
 export async function getCloudflareVideoInfo(videoId: string): Promise<CloudflareVideoInfo> {
   const response = await fetch(
-    `${config.cloudflare.streamUrl}/${videoId}`,
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream/${videoId}`,
     {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${config.cloudflare.apiToken}`,
+        'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
       },
     }
   );
@@ -112,11 +112,11 @@ export async function getCloudflareVideoInfo(videoId: string): Promise<Cloudflar
  */
 export async function deleteCloudflareVideo(videoId: string): Promise<void> {
   const response = await fetch(
-    `${config.cloudflare.streamUrl}/${videoId}`,
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream/${videoId}`,
     {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${config.cloudflare.apiToken}`,
+        'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
       },
     }
   );
@@ -140,11 +140,11 @@ export async function listCloudflareVideos(
   });
 
   const response = await fetch(
-    `${config.cloudflare.streamUrl}?${params}`,
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream?${params}`,
     {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${config.cloudflare.apiToken}`,
+        'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
       },
     }
   );
@@ -242,11 +242,11 @@ export function getVideoPreviewUrl(videoId: string): string {
  * Validate Cloudflare Stream configuration
  */
 export function validateCloudflareConfig(): void {
-  if (!config.cloudflare.apiToken) {
+  if (!process.env.CLOUDFLARE_API_TOKEN) {
     throw new Error('CLOUDFLARE_API_TOKEN is required');
   }
 
-  if (!config.cloudflare.accountId) {
+  if (!process.env.CLOUDFLARE_ACCOUNT_ID) {
     throw new Error('CLOUDFLARE_ACCOUNT_ID is required');
   }
 }

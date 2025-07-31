@@ -1,5 +1,5 @@
 // Barrel exports for all Zod schemas
-export * from './upload';
+export * from "./upload";
 
 // Re-export commonly used Zod utilities
-export { z } from 'zod';
+export { z } from "zod";

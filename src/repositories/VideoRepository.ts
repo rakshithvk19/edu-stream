@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { config } from '@/lib/config';
+
 
 // Video status enum
 export type VideoStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'error';
@@ -44,8 +44,8 @@ export interface UpdateVideoData {
  */
 function createSupabaseClient() {
   return createClient(
-    config.supabase.url,
-    config.supabase.serviceRoleKey,
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { 
       auth: { 
         persistSession: false, 

@@ -1,12 +1,6 @@
 import { NextRequest } from "next/server";
 
 import * as webhookService from "@/services/WebhookService";
-import { 
-  createErrorResponse,
-  handleInternalError,
-  handleMethodNotAllowedError,
-  ERROR_CODES
-} from "@/lib/middleware/errors";
 
 /**
  * POST - Handle Cloudflare Stream webhooks
@@ -22,10 +16,9 @@ export async function POST(req: NextRequest) {
 
     if (!isValidSignature) {
       console.error("Invalid webhook signature");
-      return createErrorResponse(
-        ERROR_CODES.UNAUTHORIZED,
-        "Invalid webhook signature",
-        401
+      return Response.json(
+        { error: 'UNAUTHORIZED', message: "Invalid webhook signature" },
+        { status: 401 }
       );
     }
 
@@ -35,10 +28,12 @@ export async function POST(req: NextRequest) {
       payload = webhookService.parseWebhookPayload(rawBody);
     } catch (error) {
       console.error("Failed to parse webhook payload:", error);
-      return createErrorResponse(
-        ERROR_CODES.INVALID_REQUEST,
-        error instanceof Error ? error.message : "Invalid webhook payload",
-        400
+      return Response.json(
+        {
+          error: 'INVALID_REQUEST',
+          message: error instanceof Error ? error.message : "Invalid webhook payload"
+        },
+        { status: 400 }
       );
     }
 
@@ -71,7 +66,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error("Webhook processing error:", error);
-    return handleInternalError("Failed to process webhook");
+    return Response.json(
+      { error: 'INTERNAL_ERROR', message: "Failed to process webhook" },
+      { status: 500 }
+    );
   }
 }
 
@@ -90,13 +88,25 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Webhook health check error:", error);
-    return handleInternalError("Failed to get webhook status");
+    return Response.json(
+      { error: 'INTERNAL_ERROR', message: "Failed to get webhook status" },
+      { status: 500 }
+    );
   }
 }
 
 /**
  * Handle unsupported methods
  */
-export const PUT = () => handleMethodNotAllowedError(['POST', 'GET']);
-export const DELETE = () => handleMethodNotAllowedError(['POST', 'GET']);
-export const PATCH = () => handleMethodNotAllowedError(['POST', 'GET']);
+function handleMethodNotAllowed(allowedMethods: string[]): Response {
+  const response = Response.json(
+    { error: 'METHOD_NOT_ALLOWED', message: `Method not allowed. Allowed methods: ${allowedMethods.join(', ')}` },
+    { status: 405 }
+  );
+  response.headers.set('Allow', allowedMethods.join(', '));
+  return response;
+}
+
+export const PUT = () => handleMethodNotAllowed(['POST', 'GET']);
+export const DELETE = () => handleMethodNotAllowed(['POST', 'GET']);
+export const PATCH = () => handleMethodNotAllowed(['POST', 'GET']);

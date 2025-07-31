@@ -3,23 +3,16 @@ import { z } from "zod";
 
 import * as videoService from "@/services/VideoService";
 import * as uploadService from "@/services/UploadService";
-import { tusMetadataSchema } from "@/zod/schemas/upload";
-import { safeParseWithSchema } from "@/zod/utils";
-import { 
-  createErrorResponse, 
-  handleValidationError, 
-  handleInternalError,
-  handleCloudflareError,
-  ERROR_CODES
-} from "@/lib/middleware/errors";
-import { config } from "@/lib/config";
+import { tusMetadataSchema } from "@/zod/upload";
+import { MAX_FILE_SIZE } from "@/lib/constants/upload";
 
 // TUS headers validation schema
 const tusHeadersSchema = z.object({
-  "upload-length": z.string().transform(Number).pipe(
-    z.number().min(1).max(config.upload.maxFileSize)
-  ),
-  "tus-resumable": z.string().default(config.tus.version),
+  "upload-length": z
+    .string()
+    .transform(Number)
+    .pipe(z.number().min(1).max(MAX_FILE_SIZE)),
+  "tus-resumable": z.string().default("1.0.0"),
   "upload-metadata": z.string().optional(),
 });
 
@@ -43,52 +36,63 @@ export async function POST(req: NextRequest) {
       "upload-metadata": req.headers.get("Upload-Metadata"),
     };
 
-    const headerValidation = safeParseWithSchema(tusHeadersSchema, rawHeaders);
+    const headerValidation = tusHeadersSchema.safeParse(rawHeaders);
     if (!headerValidation.success) {
-      console.error("Invalid TUS headers:", headerValidation.errors);
-      return createErrorResponse(
-        ERROR_CODES.VALIDATION_ERROR,
-        "Invalid TUS headers",
-        400,
-        headerValidation.errors
+      console.error("Invalid TUS headers:", headerValidation.error.issues);
+      return Response.json(
+        {
+          error: "VALIDATION_ERROR",
+          message: "Invalid TUS headers",
+          details: headerValidation.error.issues,
+        },
+        { status: 400 }
       );
     }
 
-    const { 
-      "upload-length": uploadLength, 
-      "tus-resumable": tusResumable, 
-      "upload-metadata": uploadMetadata 
+    const {
+      "upload-length": uploadLength,
+      "tus-resumable": tusResumable,
+      "upload-metadata": uploadMetadata,
     } = headerValidation.data;
 
     // 2. Parse and validate metadata
     let tusMetadata: uploadService.TusMetadata;
-    
+
     try {
       tusMetadata = uploadService.parseTusMetadata(uploadMetadata);
     } catch (error) {
       console.error("Metadata parsing error:", error);
-      return createErrorResponse(
-        ERROR_CODES.VALIDATION_ERROR,
-        error instanceof Error ? error.message : "Failed to parse upload metadata",
-        400
+      return Response.json(
+        {
+          error: "VALIDATION_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to parse upload metadata",
+        },
+        { status: 400 }
       );
     }
 
     // 3. Additional validation
-    const metadataValidation = safeParseWithSchema(tusMetadataSchema, {
+    const validationInput = {
       filename: tusMetadata.filename || tusMetadata.name,
-      filetype: tusMetadata.filetype || 'video/mp4',
+      filetype: tusMetadata.filetype || "video/mp4",
       name: tusMetadata.name,
       description: tusMetadata.description,
-    });
+    };
+    
+    const metadataValidation = tusMetadataSchema.safeParse(validationInput);
 
     if (!metadataValidation.success) {
-      console.error("Invalid metadata:", metadataValidation.errors);
-      return createErrorResponse(
-        ERROR_CODES.VALIDATION_ERROR,
-        "Invalid upload metadata",
-        400,
-        metadataValidation.errors
+      console.error("Invalid metadata:", metadataValidation.error.issues);
+      return Response.json(
+        {
+          error: "VALIDATION_ERROR",
+          message: "Invalid upload metadata",
+          details: metadataValidation.error.issues,
+        },
+        { status: 400 }
       );
     }
 
@@ -97,10 +101,13 @@ export async function POST(req: NextRequest) {
       try {
         uploadService.validateFileType(tusMetadata.filetype);
       } catch (error) {
-        return createErrorResponse(
-          ERROR_CODES.INVALID_FILE_TYPE,
-          error instanceof Error ? error.message : "Invalid file type",
-          415
+        return Response.json(
+          {
+            error: "INVALID_FILE_TYPE",
+            message:
+              error instanceof Error ? error.message : "Invalid file type",
+          },
+          { status: 415 }
         );
       }
     }
@@ -113,11 +120,13 @@ export async function POST(req: NextRequest) {
       tusResumable,
     });
 
-    console.log(`TUS session created successfully. Video ID: ${video.cloudflare_video_id}, Title: "${video.title}"`);
+    console.log(
+      `TUS session created successfully. Video ID: ${video.cloudflare_video_id}, Title: "${video.title}"`
+    );
 
     // 6. Create response headers
     const responseHeaders = uploadService.createTusResponseHeaders({
-      "Location": `/api/tus-upload/${uploadSession.streamMediaId}`,
+      Location: `/api/tus-upload/${uploadSession.streamMediaId}`,
       "Upload-Offset": "0",
     });
 
@@ -125,14 +134,25 @@ export async function POST(req: NextRequest) {
       status: 201,
       headers: responseHeaders,
     });
-
   } catch (error) {
     console.error("TUS POST error:", error);
 
-    if (error instanceof Error && error.message.includes('Cloudflare')) {
-      return handleCloudflareError(500, error.message);
+    if (error instanceof Error && error.message.includes("Cloudflare")) {
+      return Response.json(
+        {
+          error: "CLOUDFLARE_ERROR",
+          message: `Cloudflare API error: ${error.message}`,
+        },
+        { status: 500 }
+      );
     }
 
-    return handleInternalError("Failed to initialize upload session");
+    return Response.json(
+      {
+        error: "INTERNAL_ERROR",
+        message: "Failed to initialize upload session",
+      },
+      { status: 500 }
+    );
   }
 }

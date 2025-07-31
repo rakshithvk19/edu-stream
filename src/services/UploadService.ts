@@ -1,7 +1,7 @@
-import * as uploadsDb from "@/lib/database/uploads";
-import * as cloudflare from "@/lib/external/cloudflare";
-import { config } from "@/lib/config";
-import type { UploadSession } from "@/lib/database/uploads";
+import * as uploadsDb from "@/repositories/UploadRepository";
+import * as cloudflare from "@/services/CloudflareService";
+import { MAX_FILE_SIZE, TUS_VERSION } from "@/lib/constants/upload";
+import type { UploadSession } from "@/repositories/UploadRepository";
 
 // Upload service interfaces
 export interface TusHeaders {
@@ -40,15 +40,15 @@ export function parseTusHeaders(headers: Headers): TusHeaders {
     throw new Error("Upload-Length must be a positive number");
   }
 
-  if (length > config.upload.maxFileSize) {
+  if (length > MAX_FILE_SIZE) {
     throw new Error(
-      `File size exceeds maximum allowed size of ${config.upload.maxFileSize} bytes`
+      `File size exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes`
     );
   }
 
   return {
     "upload-length": length,
-    "tus-resumable": tusResumable || config.tus.version,
+    "tus-resumable": tusResumable || TUS_VERSION,
     "upload-metadata": uploadMetadata || undefined,
   };
 }
@@ -115,7 +115,7 @@ export async function handleTusHeadRequest(
   }
 
   const tusResumable =
-    request.headers.get("Tus-Resumable") || config.tus.version;
+    request.headers.get("Tus-Resumable") || TUS_VERSION;
 
   try {
     const response = await cloudflare.forwardTusRequest(
@@ -273,7 +273,7 @@ export async function getUploadProgress(
       session.cloudflareUrl,
       "HEAD",
       {
-        "Tus-Resumable": config.tus.version,
+        "Tus-Resumable": TUS_VERSION,
       }
     );
 
@@ -368,9 +368,21 @@ export function validateFileType(filetype?: string): void {
     return; // File type validation is optional
   }
 
-  if (!config.upload.allowedMimeTypes.includes(filetype as any)) {
+  const allowedMimeTypes = [
+    'video/mp4',
+    'video/mpeg', 
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/x-ms-wmv',
+    'video/x-flv',
+    'video/webm',
+    'video/3gpp',
+    'video/x-matroska',
+  ];
+  
+  if (!allowedMimeTypes.includes(filetype as any)) {
     throw new Error(
-      `File type ${filetype} is not supported. Allowed types: ${config.upload.allowedMimeTypes.join(
+      `File type ${filetype} is not supported. Allowed types: ${allowedMimeTypes.join(
         ", "
       )}`
     );
@@ -384,10 +396,10 @@ export function createTusResponseHeaders(
   additionalHeaders?: Record<string, string>
 ): Record<string, string> {
   const headers = {
-    "Tus-Resumable": config.tus.version,
-    "Tus-Version": config.tus.version,
-    "Tus-Extension": config.tus.extensions.join(","),
-    "Tus-Max-Size": config.upload.maxFileSize.toString(),
+    "Tus-Resumable": TUS_VERSION,
+    "Tus-Version": TUS_VERSION,
+    "Tus-Extension": "creation,expiration",
+    "Tus-Max-Size": MAX_FILE_SIZE.toString(),
   };
 
   if (additionalHeaders) {

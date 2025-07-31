@@ -1,10 +1,6 @@
 import { NextRequest } from "next/server";
 
 import * as uploadService from "@/services/UploadService";
-import { 
-  handleNotFoundError, 
-  handleInternalError 
-} from "@/lib/middleware/errors";
 
 /**
  * OPTIONS - Handle preflight requests
@@ -19,17 +15,20 @@ export async function OPTIONS() {
  */
 export async function HEAD(
   req: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await params;
     
     const response = await uploadService.handleTusHeadRequest(sessionId, req);
     return response;
     
   } catch (error) {
     console.error("TUS HEAD error:", error);
-    return handleInternalError("Failed to get upload status");
+    return Response.json(
+      { error: 'INTERNAL_ERROR', message: "Failed to get upload status" },
+      { status: 500 }
+    );
   }
 }
 
@@ -38,17 +37,20 @@ export async function HEAD(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await params;
     
     const response = await uploadService.handleTusPatchRequest(sessionId, req);
     return response;
     
   } catch (error) {
     console.error("TUS PATCH error:", error);
-    return handleInternalError("Failed to upload chunk");
+    return Response.json(
+      { error: 'INTERNAL_ERROR', message: "Failed to upload chunk" },
+      { status: 500 }
+    );
   }
 }
 
@@ -57,15 +59,18 @@ export async function PATCH(
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await params;
     
     const session = await uploadService.getUploadSession(sessionId);
     
     if (!session) {
-      return handleNotFoundError("Upload session not found");
+      return Response.json(
+        { error: 'NOT_FOUND', message: "Upload session not found" },
+        { status: 404 }
+      );
     }
 
     const progress = await uploadService.getUploadProgress(sessionId);
@@ -79,6 +84,9 @@ export async function GET(
     
   } catch (error) {
     console.error("TUS GET error:", error);
-    return handleInternalError("Failed to get session info");
+    return Response.json(
+      { error: 'INTERNAL_ERROR', message: "Failed to get session info" },
+      { status: 500 }
+    );
   }
 }

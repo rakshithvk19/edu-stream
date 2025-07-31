@@ -1,33 +1,6 @@
-// Form-related type definitions
+// Form-related type definitions (simplified for React Hook Form)
 export interface FormErrors {
   [field: string]: string;
-}
-
-export interface ValidationResult<T> {
-  success: boolean;
-  data?: T;
-  errors?: FormErrors;
-}
-
-// Upload form specific types
-export interface UploadFormState {
-  title: string;
-  description: string;
-  file: File | null;
-  errors: FormErrors;
-  isValid: boolean;
-  touched: {
-    title: boolean;
-    description: boolean;
-    file: boolean;
-  };
-}
-
-// Form field validation status
-export interface FieldValidation {
-  isValid: boolean;
-  error?: string;
-  touched: boolean;
 }
 
 // Generic form props
