@@ -15,6 +15,7 @@ export interface TusMetadata {
   filetype?: string;
   name: string;
   description?: string;
+  chapters: string;
 }
 
 export interface UploadProgress {
@@ -68,6 +69,7 @@ export function parseTusMetadata(metadataString?: string): TusMetadata {
     filename: metadata.filename,
     filetype: metadata.filetype,
     description: metadata.description,
+    chapters: metadata.chapters || "",
   };
 
   // Validate required fields

@@ -1,6 +1,7 @@
 import * as videoDb from '@/repositories/VideoRepository';
 import * as cloudflare from '@/services/CloudflareService';
 import type { VideoRecord, VideoStatus, CreateVideoData } from '@/repositories/VideoRepository';
+import { parseChaptersFromText } from '@/lib/utils/chapters';
 
 // Video service interfaces
 export interface CreateVideoRequest {
@@ -8,6 +9,7 @@ export interface CreateVideoRequest {
   description?: string;
   uploadLength: number;
   tusResumable: string;
+  chapters: string;
 }
 
 export interface VideoWithCloudflareInfo extends VideoRecord {
@@ -34,6 +36,16 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
     throw new Error('Video description must be less than 1000 characters');
   }
 
+  // Process chapters if provided
+  let processedChapters: any[] = [];
+  if (request.chapters && request.chapters.trim()) {
+    const { chapters, errors } = parseChaptersFromText(request.chapters);
+    if (errors.length > 0) {
+      throw new Error(`Invalid chapters: ${errors[0].error}`);
+    }
+    processedChapters = chapters;
+  }
+
   // Create upload session in Cloudflare
   const uploadSession = await cloudflare.createCloudflareUploadSession({
     title: request.title.trim(),
@@ -49,6 +61,7 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
     cloudflare_video_id: uploadSession.streamMediaId,
     size_bytes: request.uploadLength,
     cloudflare_upload_id: uploadSession.uploadUrl,
+    chapters: processedChapters,
   };
 
   const video = await videoDb.insertVideo(videoData);

@@ -20,6 +20,11 @@ export const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 export const RATE_LIMIT_MAX_REQUESTS = 100;
 export const RATE_LIMIT_MESSAGE = 'Too many requests. Please try again later.';
 
+// Chapter-related constants
+export const MAX_CHAPTERS = 20;
+export const MIN_CHAPTER_DURATION = 10; // seconds
+export const MAX_CHAPTER_TITLE_LENGTH = 80;
+
 // Supported video MIME types
 export const SUPPORTED_VIDEO_TYPES = [
   'video/mp4',

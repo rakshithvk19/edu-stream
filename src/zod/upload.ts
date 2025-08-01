@@ -4,7 +4,10 @@ import {
   MAX_TITLE_LENGTH,
   MAX_DESCRIPTION_LENGTH,
   SUPPORTED_VIDEO_TYPES,
+  MAX_CHAPTERS,
+  MAX_CHAPTER_TITLE_LENGTH,
 } from "@/lib/constants/upload";
+import { parseChaptersFromText, type Chapter } from "@/lib/utils/chapters";
 
 // File validation schema for native File objects (React Hook Form)
 export const nativeFileValidationSchema = z
@@ -18,6 +21,34 @@ export const nativeFileValidationSchema = z
     message:
       "File must be a supported video format (MP4, MOV, AVI, WMV, FLV, WebM, MKV, etc.)",
   });
+
+// Chapter validation schema
+export const chapterSchema = z.object({
+  title: z.string().min(1).max(MAX_CHAPTER_TITLE_LENGTH),
+  timestamp: z.string().min(1),
+  start_seconds: z.number().min(0),
+});
+
+// Chapters text validation (parses and validates the text input)
+export const chaptersTextSchema = z
+  .string()
+  .default("")
+  .transform((text) => text.trim())
+  .refine(
+    (text) => {
+      if (!text || text === "") return true; // Empty chapters are allowed
+      const { errors } = parseChaptersFromText(text);
+      return errors.length === 0;
+    },
+    (text) => {
+      if (!text || text === "") return { message: "Chapters are optional" };
+      const { errors } = parseChaptersFromText(text);
+      const firstError = errors[0];
+      return {
+        message: firstError ? `Line ${firstError.line}: ${firstError.error}` : "Invalid chapters format",
+      };
+    }
+  );
 
 // React Hook Form schema (uses native File objects)
 export const reactHookFormSchema = z.object({
@@ -46,6 +77,7 @@ export const reactHookFormSchema = z.object({
     .transform((val) => (val === "" ? "" : val)),
 
   file: nativeFileValidationSchema,
+  chapters: chaptersTextSchema,
 });
 
 // File validation schema
@@ -87,6 +119,7 @@ export const uploadFormSchema = z.object({
     .transform((desc) => (desc ? desc.replace(/\s+/g, " ") : "")), // Normalize whitespace
 
   file: fileValidationSchema,
+  chapters: chaptersTextSchema,
 });
 
 // TUS metadata schema (for server-side validation)
@@ -95,6 +128,7 @@ export const tusMetadataSchema = z.object({
   filetype: z.string().min(1),
   name: z.string().min(1),
   description: z.string().optional(),
+  chapters: z.string().default(""),
 });
 
 // API request schema (server-side)
@@ -105,6 +139,7 @@ export const createUploadRequestSchema = z.object({
   fileType: z
     .string()
     .refine((type) => SUPPORTED_VIDEO_TYPES.includes(type as any)),
+  chapters: chaptersTextSchema,
 });
 
 // Type exports (derived from schemas)

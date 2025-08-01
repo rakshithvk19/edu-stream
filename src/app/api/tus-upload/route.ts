@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       filetype: tusMetadata.filetype || "video/mp4",
       name: tusMetadata.name,
       description: tusMetadata.description,
+      chapters: tusMetadata.chapters,
     };
     
     const metadataValidation = tusMetadataSchema.safeParse(validationInput);
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
       description: tusMetadata.description,
       uploadLength,
       tusResumable,
+      chapters: tusMetadata.chapters,
     });
 
     console.log(

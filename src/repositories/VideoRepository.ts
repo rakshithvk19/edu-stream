@@ -18,6 +18,7 @@ export interface VideoRecord {
   created_at?: string;
   updated_at?: string;
   cloudflare_upload_id?: string | null;
+  chapters?: any[] | null; // JSONB array of chapter objects
 }
 
 // Create video data interface
@@ -27,6 +28,7 @@ export interface CreateVideoData {
   cloudflare_video_id: string;
   size_bytes: number;
   cloudflare_upload_id: string;
+  chapters?: any[]; // JSONB array of chapter objects
 }
 
 // Update video data interface
@@ -73,6 +75,7 @@ export async function insertVideo(data: CreateVideoData): Promise<VideoRecord> {
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     cloudflare_upload_id: data.cloudflare_upload_id,
+    chapters: data.chapters || [],
   };
 
   const { data: video, error } = await supabase

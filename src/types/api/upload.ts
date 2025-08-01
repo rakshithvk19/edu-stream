@@ -1,6 +1,7 @@
 export interface VideoUploadRequest {
   title: string;
   description?: string;
+  chapters?: string;
 }
 export interface VideoUploadResponse {
   uploadUrl: string;
