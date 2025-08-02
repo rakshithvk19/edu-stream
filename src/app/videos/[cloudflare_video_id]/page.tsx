@@ -1,23 +1,30 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { Video, Home, Upload, ArrowLeft, Calendar, Clock, Share2 } from 'lucide-react';
+import { Video, Home, Upload, ArrowLeft, Calendar, Clock, Share2, List } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import VideoPlayer from '@/components/video/VideoPlayer';
+import VideoPlayerWithChapters from '@/components/video/VideoPlayerWithChapters';
+import ChaptersSidebar from '@/components/video/ChaptersSidebar';
+import ChaptersBottomSheet from '@/components/video/ChaptersBottomSheet';
 import { formatVideoDuration } from '@/services/VideoStreamingService';
+import type { Chapter } from '@/lib/utils/chapters';
 import type { VideoRecord } from '@/repositories/VideoRepository';
 import type { VideoDetailsResponse, VideoStreamUrlsResponse, VideoErrorResponse } from '@/types/api/video-streaming';
-import type { VideoPlayerRef } from '@/types/components/video-player';
+import type { VideoPlayerWithChaptersRef } from '@/components/video/VideoPlayerWithChapters';
 
 export default function VideoPlayerPage() {
   const params = useParams();
   const router = useRouter();
-  const playerRef = useRef<VideoPlayerRef>(null);
+  const playerRef = useRef<VideoPlayerWithChaptersRef>(null);
   
   const [video, setVideo] = useState<VideoRecord | null>(null);
   const [streamingUrls, setStreamingUrls] = useState<VideoStreamUrlsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [isMobileChaptersOpen, setIsMobileChaptersOpen] = useState(false);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const chaptersSidebarRef = useRef<HTMLDivElement>(null);
 
   const cloudflareVideoId = params?.cloudflare_video_id as string;
 
@@ -51,6 +58,31 @@ export default function VideoPlayerPage() {
         const videoData: VideoDetailsResponse = await videoResponse.json();
         setVideo(videoData.video);
 
+        // Load chapters from video metadata
+        if (videoData.video.chapters && Array.isArray(videoData.video.chapters) && videoData.video.chapters.length > 0) {
+          try {
+            // Validate that chapters have the expected structure
+            const validChapters = videoData.video.chapters.filter(chapter => 
+              chapter && 
+              typeof chapter.title === 'string' && 
+              typeof chapter.timestamp === 'string' && 
+              typeof chapter.start_seconds === 'number'
+            );
+            
+            if (validChapters.length > 0) {
+              setChapters(validChapters);
+            } else {
+              console.error('No valid chapters found in video metadata');
+              setChapters([]);
+            }
+          } catch (chapterError) {
+            console.error('Failed to load chapters:', chapterError);
+            setChapters([]);
+          }
+        } else {
+          setChapters([]);
+        }
+
         // Fetch streaming URLs
         const streamResponse = await fetch(`/api/videos/${cloudflareVideoId}/stream`);
         
@@ -75,8 +107,45 @@ export default function VideoPlayerPage() {
 
   // Handle video player ready
   const handlePlayerReady = (player: any) => {
-    // Player is ready
+    // Small delay to ensure DOM is fully rendered
+    setTimeout(() => {
+      if (videoContainerRef.current && chaptersSidebarRef.current && chapters.length > 0) {
+        const videoHeight = videoContainerRef.current.offsetHeight;
+        chaptersSidebarRef.current.style.height = `${videoHeight}px`;
+      }
+    }, 100);
   };
+
+  // Handle chapter click
+  const handleChapterClick = (chapter: Chapter) => {
+    if (playerRef.current) {
+      playerRef.current.seekToChapter(chapter);
+    }
+  };
+
+  // Handle mobile chapters toggle
+  const handleMobileChaptersToggle = () => {
+    setIsMobileChaptersOpen(!isMobileChaptersOpen);
+  };
+
+  // Sync chapters sidebar height with video player height
+  useEffect(() => {
+    const syncHeights = () => {
+      if (videoContainerRef.current && chaptersSidebarRef.current && chapters.length > 0) {
+        const videoHeight = videoContainerRef.current.offsetHeight;
+        chaptersSidebarRef.current.style.height = `${videoHeight}px`;
+      }
+    };
+
+    // Sync on load and resize
+    syncHeights();
+    window.addEventListener('resize', syncHeights);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', syncHeights);
+    };
+  }, [video, streamingUrls, chapters]);
 
   // Handle video player error
   const handlePlayerError = (error: string) => {
@@ -168,6 +237,16 @@ export default function VideoPlayerPage() {
               <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
               <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
             </div>
+
+            {/* Mobile Chapters Bottom Sheet */}
+            {chapters.length > 0 && (
+              <ChaptersBottomSheet
+                chapters={chapters}
+                isOpen={isMobileChaptersOpen}
+                onClose={() => setIsMobileChaptersOpen(false)}
+                onChapterClick={handleChapterClick}
+              />
+            )}
           </div>
         )}
 
@@ -191,20 +270,54 @@ export default function VideoPlayerPage() {
         {/* Video Content */}
         {video && streamingUrls && !loading && !error && (
           <div className="space-y-8">
-            {/* Video Player */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-              <VideoPlayer
-                ref={playerRef}
-                src={streamingUrls.hls}
-                poster={streamingUrls.thumbnail}
-                title={video.title}
-                onReady={handlePlayerReady}
-                onError={handlePlayerError}
-                muted={true}
-                controls={true}
-                fluid={true}
-                className="w-full"
-              />
+            {/* Video Player with Chapters Layout */}
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Video Player - 75% on desktop, full width on mobile */}
+              <div className="w-full lg:w-3/4 flex-shrink-0">
+                <div 
+                  ref={videoContainerRef}
+                  className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 overflow-hidden relative"
+                >
+                  <VideoPlayerWithChapters
+                    ref={playerRef}
+                    src={streamingUrls.hls}
+                    poster={streamingUrls.thumbnail}
+                    title={video.title}
+                    chapters={chapters}
+                    videoDuration={video.duration_sec || undefined}
+                    onReady={handlePlayerReady}
+                    onError={handlePlayerError}
+                    muted={true}
+                    controls={true}
+                    fluid={true}
+                    className="w-full"
+                  />
+                  
+                  {/* Mobile Chapters Toggle Button */}
+                  {chapters.length > 0 && (
+                    <button
+                      onClick={handleMobileChaptersToggle}
+                      className="lg:hidden absolute bottom-4 right-4 bg-black/70 text-white p-3 rounded-full hover:bg-black/80 transition-colors"
+                    >
+                      <List className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Chapters Sidebar - 25% on desktop, hidden on mobile */}
+              {chapters.length > 0 && (
+                <div 
+                  ref={chaptersSidebarRef}
+                  className="hidden lg:flex w-1/4 flex-shrink-0"
+                >
+                  <ChaptersSidebar
+                    chapters={chapters}
+                    onChapterClick={handleChapterClick}
+                    className="w-full h-full"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Video Metadata */}
@@ -266,6 +379,16 @@ export default function VideoPlayerPage() {
                 </div>
               </div>
             </div>
+
+            {/* Mobile Chapters Bottom Sheet */}
+            {chapters.length > 0 && (
+              <ChaptersBottomSheet
+                chapters={chapters}
+                isOpen={isMobileChaptersOpen}
+                onClose={() => setIsMobileChaptersOpen(false)}
+                onChapterClick={handleChapterClick}
+              />
+            )}
           </div>
         )}
       </div>

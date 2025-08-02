@@ -1,6 +1,8 @@
 // Video.js doesn't export named types in the standard way
 // We'll use the default import and access Player through the namespace
 
+import type { Chapter } from '@/lib/utils/chapters';
+
 export interface VideoPlayerProps {
   src: string;
   poster?: string;
@@ -21,6 +23,19 @@ export interface VideoPlayerRef {
   play: () => void;
   pause: () => void;
   dispose: () => void;
+}
+
+// Enhanced video player props with chapter support
+export interface VideoPlayerWithChaptersProps extends VideoPlayerProps {
+  chapters?: Chapter[];
+  onChapterChange?: (chapter: Chapter | null) => void;
+  videoDuration?: number;
+}
+
+// Enhanced video player ref with chapter methods
+export interface VideoPlayerWithChaptersRef extends VideoPlayerRef {
+  seekToChapter: (chapter: Chapter) => void;
+  seekToTime: (seconds: number) => void;
 }
 
 export interface VideoJsConfig {
