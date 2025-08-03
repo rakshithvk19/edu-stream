@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import videojs from 'video.js';
 import VideoPlayer from './VideoPlayer';
 import type { VideoPlayerProps, VideoPlayerRef } from '@/types/components/video-player';
 import type { Chapter } from '@/lib/utils/chapters';
@@ -17,7 +18,7 @@ interface VideoPlayerWithChaptersRef extends VideoPlayerRef {
 
 const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlayerWithChaptersProps>(({
   chapters = [],
-  onChapterChange,
+  onChapterChange: _onChapterChange,
   videoDuration,
   onReady,
   ...videoPlayerProps
@@ -46,7 +47,7 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
   }));
 
   // Add chapter markers to Video.js progress bar
-  const addChapterMarkers = (player: any) => {
+  const addChapterMarkers = (player: videojs.Player) => {
     if (!chapters.length || !videoDuration || markersAddedRef.current) return;
 
     try {
@@ -61,7 +62,7 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
       existingMarkers.forEach((marker: Element) => marker.remove());
 
       // Add new markers
-      chapters.forEach((chapter, index) => {
+      chapters.forEach((chapter) => {
         const position = (chapter.start_seconds / videoDuration) * 100;
         
         // Create marker element
@@ -159,7 +160,7 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
   };
 
   // Handle player ready event
-  const handlePlayerReady = (player: any) => {
+  const handlePlayerReady = (player: videojs.Player) => {
     // Add chapter markers once player is ready and we have duration
     if (chapters.length > 0 && videoDuration) {
       // Small delay to ensure DOM is ready
@@ -177,7 +178,7 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
       markersAddedRef.current = false;
       addChapterMarkers(player);
     }
-  }, [chapters, videoDuration]);
+  }, [chapters, videoDuration, addChapterMarkers]);
 
   return (
     <VideoPlayer

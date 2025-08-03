@@ -4,10 +4,9 @@ import {
   MAX_TITLE_LENGTH,
   MAX_DESCRIPTION_LENGTH,
   SUPPORTED_VIDEO_TYPES,
-  MAX_CHAPTERS,
   MAX_CHAPTER_TITLE_LENGTH,
 } from "@/lib/constants/upload";
-import { parseChaptersFromText, type Chapter } from "@/lib/utils/chapters";
+import { parseChaptersFromText } from "@/lib/utils/chapters";
 
 // File validation schema for native File objects (React Hook Form)
 export const nativeFileValidationSchema = z
@@ -17,7 +16,7 @@ export const nativeFileValidationSchema = z
     (file) => file.size <= MAX_FILE_SIZE,
     "File size must be less than 3GB"
   )
-  .refine((file) => SUPPORTED_VIDEO_TYPES.includes(file.type as any), {
+  .refine((file) => SUPPORTED_VIDEO_TYPES.includes(file.type as typeof SUPPORTED_VIDEO_TYPES[number]), {
     message:
       "File must be a supported video format (MP4, MOV, AVI, WMV, FLV, WebM, MKV, etc.)",
   });
@@ -89,9 +88,9 @@ export const fileValidationSchema = z.object({
     .max(MAX_FILE_SIZE, "File size must be less than 3GB"),
   type: z
     .string()
-    .refine((type) => SUPPORTED_VIDEO_TYPES.includes(type as any), {
-      message:
-        "File must be a supported video format (MP4, MOV, AVI, WMV, FLV, WebM, MKV, etc.)",
+    .refine((type) => SUPPORTED_VIDEO_TYPES.includes(type as typeof SUPPORTED_VIDEO_TYPES[number]), {
+    message:
+    "File must be a supported video format (MP4, MOV, AVI, WMV, FLV, WebM, MKV, etc.)",
     }),
   lastModified: z.number().optional(),
 });
@@ -138,7 +137,7 @@ export const createUploadRequestSchema = z.object({
   fileSize: z.number().min(1).max(MAX_FILE_SIZE),
   fileType: z
     .string()
-    .refine((type) => SUPPORTED_VIDEO_TYPES.includes(type as any)),
+    .refine((type) => SUPPORTED_VIDEO_TYPES.includes(type as typeof SUPPORTED_VIDEO_TYPES[number])),
   chapters: chaptersTextSchema,
 });
 

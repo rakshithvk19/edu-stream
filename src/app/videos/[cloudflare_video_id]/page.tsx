@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Video, Home, Upload, ArrowLeft, Calendar, Clock, Share2, List } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import VideoPlayerWithChapters from '@/components/video/VideoPlayerWithChapters';
 import ChaptersSidebar from '@/components/video/ChaptersSidebar';
 import ChaptersBottomSheet from '@/components/video/ChaptersBottomSheet';
@@ -14,7 +14,6 @@ import type { VideoPlayerWithChaptersRef } from '@/components/video/VideoPlayerW
 
 export default function VideoPlayerPage() {
   const params = useParams();
-  const router = useRouter();
   const playerRef = useRef<VideoPlayerWithChaptersRef>(null);
   
   const [video, setVideo] = useState<VideoRecord | null>(null);
@@ -106,7 +105,7 @@ export default function VideoPlayerPage() {
   }, [cloudflareVideoId]);
 
   // Handle video player ready
-  const handlePlayerReady = (player: any) => {
+  const handlePlayerReady = () => {
     // Small delay to ensure DOM is fully rendered
     setTimeout(() => {
       if (videoContainerRef.current && chaptersSidebarRef.current && chapters.length > 0) {

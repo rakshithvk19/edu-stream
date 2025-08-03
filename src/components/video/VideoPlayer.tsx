@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import videojs from 'video.js';
 import '@videojs/http-streaming';
-import type { VideoPlayerProps, VideoPlayerRef, VideoJsConfig } from '@/types/components/video-player';
+import type { VideoPlayerProps, VideoPlayerRef } from '@/types/components/video-player';
 
 const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   src,
@@ -19,7 +19,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
   height = 360,
 }, ref) => {
   const videoRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<videojs.Player | null>(null);
 
   // Expose methods through ref
   useImperativeHandle(ref, () => ({
@@ -49,7 +49,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
       videoRef.current.appendChild(videoElement);
 
       // Video.js configuration
-      const options: any = {
+      const options: videojs.PlayerOptions = {
         controls,
         fluid,
         responsive: true,
@@ -78,11 +78,14 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({
         onReady?.(player);
 
         // Handle HLS-specific events if available
-        const hlsHandler = (player as any).tech()?.hls;
-        if (hlsHandler) {
-          hlsHandler.on('error', (event: any, data: any) => {
-            onError?.(`HLS streaming error: ${data.type}`);
-          });
+        const tech = player.tech(true);
+        if (tech && 'hls' in tech) {
+          const hlsHandler = (tech as unknown as { hls: { on: (event: string, callback: (event: unknown, data: { type: string }) => void) => void } }).hls;
+          if (hlsHandler) {
+            hlsHandler.on('error', (_event: unknown, data: { type: string }) => {
+              onError?.(`HLS streaming error: ${data.type}`);
+            });
+          }
         }
       }));
 

@@ -5,7 +5,7 @@ export interface FormErrors {
 
 // Generic form props
 export interface FormProps {
-  onSubmit?: (data: any) => void;
+  onSubmit?: (data: unknown) => void;
   onError?: (errors: FormErrors) => void;
   disabled?: boolean;
   className?: string;

@@ -1,11 +1,12 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Play, Clock, Calendar } from 'lucide-react';
 import { formatVideoDuration } from '@/services/VideoStreamingService';
 import type { VideoCardProps } from '@/types/components/video-grid';
 
-export default function VideoCard({ video, onClick, className = '' }: VideoCardProps) {
+export default function VideoCard({ video, onClick: _onClick, className = '' }: VideoCardProps) {
   const thumbnailUrl = `https://videodelivery.net/${video.cloudflare_video_id}/thumbnails/thumbnail.jpg`;
   
   // Format upload date
@@ -25,11 +26,12 @@ export default function VideoCard({ video, onClick, className = '' }: VideoCardP
       <Link href={`/videos/${video.cloudflare_video_id}`}>
         {/* Thumbnail Container */}
         <div className="relative aspect-video bg-gray-100 overflow-hidden">
-          <img
+          <Image
             src={thumbnailUrl}
             alt={video.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               // Fallback to a placeholder if thumbnail fails to load
               const target = e.target as HTMLImageElement;

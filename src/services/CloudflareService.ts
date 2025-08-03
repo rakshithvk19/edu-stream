@@ -15,7 +15,7 @@ export interface CloudflareVideoInfo {
     errorReasonCode?: string;
     errorReasonText?: string;
   };
-  meta: Record<string, any>;
+  meta: Record<string, unknown>;
   created: string;
   modified: string;
   size?: number;
@@ -163,11 +163,11 @@ export async function listCloudflareVideos(
  */
 export function buildUploadMetadata(data: Record<string, string>): string {
   return Object.entries(data)
-    .filter(([key, value]) => value !== undefined && value !== '')
+    .filter(([_key, value]) => value !== undefined && value !== '')
     .map(([key, value]) => {
       try {
         return `${key} ${btoa(value)}`; // Base64 encode values
-      } catch (error) {
+      } catch (_error) {
         console.warn(`Failed to encode metadata for key: ${key}`);
         return `${key} ${value}`; // Fallback to plain text
       }
@@ -187,7 +187,7 @@ export function parseUploadMetadata(metadata: string): Record<string, string> {
       if (key && value) {
         try {
           result[key] = atob(value); // Base64 decode
-        } catch (e) {
+        } catch (_e) {
           console.warn(`Failed to decode metadata value for key: ${key}`);
           result[key] = value; // Use as-is if decode fails
         }

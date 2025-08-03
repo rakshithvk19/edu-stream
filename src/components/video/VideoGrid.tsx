@@ -38,7 +38,7 @@ function VideoGridSkeleton({ count = 12, className = '' }: VideoGridSkeletonProp
 }
 
 // Search component (placeholder for now)
-function VideoSearch({ onSearch, placeholder = "Search videos...", disabled = false, className = '' }: VideoSearchProps) {
+function VideoSearch({ onSearch: _onSearch, placeholder = "Search videos...", disabled = false, className = '' }: VideoSearchProps) {
   return (
     <div className={`relative max-w-lg mx-auto ${className}`}>
       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -49,7 +49,7 @@ function VideoSearch({ onSearch, placeholder = "Search videos...", disabled = fa
         placeholder={placeholder}
         disabled={disabled}
         className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white/60 backdrop-blur-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 hover:border-gray-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        onChange={(e) => {
+        onChange={(_e) => {
           // For now, this is just a placeholder - search functionality will be added later
           // onSearch?.(e.target.value);
         }}
@@ -68,7 +68,7 @@ export default function VideoGrid({
   className = '' 
 }: VideoGridProps) {
   // Handle video card click
-  const handleVideoClick = (video: VideoRecord) => {
+  const handleVideoClick = (_video: VideoRecord) => {
     // Navigation is handled by Link component in VideoCard
   };
 

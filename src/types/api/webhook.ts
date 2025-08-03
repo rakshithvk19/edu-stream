@@ -9,7 +9,7 @@ export interface CloudflareStreamWebhookPayload {
       errorReasonText?: string;
     };
     meta: {
-      [key: string]: any;
+      [key: string]: unknown;
     };
     created: string;
     modified: string;

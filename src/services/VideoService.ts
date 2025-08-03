@@ -37,7 +37,7 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
   }
 
   // Process chapters if provided
-  let processedChapters: any[] = [];
+  let processedChapters: Array<{title: string; timestamp: string; start_seconds: number}> = [];
   if (request.chapters && request.chapters.trim()) {
     const { chapters, errors } = parseChaptersFromText(request.chapters);
     if (errors.length > 0) {

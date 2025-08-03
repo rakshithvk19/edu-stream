@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef } from 'react';
-import { X, Play, Clock, ChevronUp } from 'lucide-react';
+import { X, Play, Clock } from 'lucide-react';
 import type { Chapter } from '@/lib/utils/chapters';
 
 interface ChaptersBottomSheetProps {

@@ -1,6 +1,7 @@
 // Video.js doesn't export named types in the standard way
 // We'll use the default import and access Player through the namespace
 
+import videojs from 'video.js';
 import type { Chapter } from '@/lib/utils/chapters';
 
 export interface VideoPlayerProps {
@@ -8,7 +9,7 @@ export interface VideoPlayerProps {
   poster?: string;
   title?: string;
   className?: string;
-  onReady?: (player: any) => void; // Using any for now since Video.js types can be tricky
+  onReady?: (player: videojs.Player) => void; // Using Video.js types
   onError?: (error: string) => void;
   autoplay?: boolean;
   muted?: boolean;
@@ -19,7 +20,7 @@ export interface VideoPlayerProps {
 }
 
 export interface VideoPlayerRef {
-  player: any | null; // Using any for now
+  player: videojs.Player | null;
   play: () => void;
   pause: () => void;
   dispose: () => void;

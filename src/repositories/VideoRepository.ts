@@ -18,7 +18,7 @@ export interface VideoRecord {
   created_at?: string;
   updated_at?: string;
   cloudflare_upload_id?: string | null;
-  chapters?: any[] | null; // JSONB array of chapter objects
+  chapters?: Array<{title: string; timestamp: string; start_seconds: number}> | null; // JSONB array of chapter objects
 }
 
 // Create video data interface
@@ -28,7 +28,7 @@ export interface CreateVideoData {
   cloudflare_video_id: string;
   size_bytes: number;
   cloudflare_upload_id: string;
-  chapters?: any[]; // JSONB array of chapter objects
+  chapters?: Array<{title: string; timestamp: string; start_seconds: number}>; // JSONB array of chapter objects
 }
 
 // Update video data interface

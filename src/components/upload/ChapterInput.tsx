@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, AlertCircle, CheckCircle, List } from "lucide-react";
-import { parseChaptersFromText, getExampleChaptersText, type ChapterValidationError } from "@/lib/utils/chapters";
+import { parseChaptersFromText, getExampleChaptersText } from "@/lib/utils/chapters";
 import type { ChapterInputProps } from "@/types/components/chapters";
 
 export default function ChapterInput({
@@ -13,7 +13,7 @@ export default function ChapterInput({
   disabled = false,
 }: ChapterInputProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [parsedChapters, setParsedChapters] = useState<any[]>([]);
+  const [parsedChapters, setParsedChapters] = useState<{title: string; timestamp: string; start_seconds: number}[]>([]);
 
   // Parse chapters for preview (without validation - parent handles validation)
   useEffect(() => {

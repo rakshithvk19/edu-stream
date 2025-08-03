@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import {
   Upload,
   FileText,
@@ -43,14 +43,13 @@ export default function VideoUploadForm({
 }: VideoUploadFormProps) {
   const {
     register,
-    handleSubmit,
     formState: { errors, isValid },
     watch,
     setValue,
     reset,
   } = useForm<
     z.input<typeof reactHookFormSchema>,
-    any,
+    unknown,
     z.output<typeof reactHookFormSchema>
   >({
     resolver: zodResolver(reactHookFormSchema),
@@ -71,7 +70,7 @@ export default function VideoUploadForm({
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [videoId, setVideoId] = useState<string | null>(null);
+  const [uploadedVideoId, setUploadedVideoId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const tusUploadRef = useRef<TusUpload | null>(null);
 
@@ -157,10 +156,10 @@ export default function VideoUploadForm({
 
           if (upload.url) {
             const matches = upload.url.match(/\/api\/tus-upload\/([^\/]+)$/);
-            const videoId = matches ? matches[1] : null;
-            setVideoId(videoId);
-            if (videoId) {
-              onUploadSuccess?.(videoId);
+            const extractedVideoId = matches ? matches[1] : null;
+            setUploadedVideoId(extractedVideoId);
+            if (extractedVideoId) {
+              onUploadSuccess?.(extractedVideoId);
             }
           }
 

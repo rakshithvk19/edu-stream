@@ -380,9 +380,9 @@ export function validateFileType(filetype?: string): void {
     'video/webm',
     'video/3gpp',
     'video/x-matroska',
-  ];
+  ] as const;
   
-  if (!allowedMimeTypes.includes(filetype as any)) {
+  if (!allowedMimeTypes.includes(filetype as typeof allowedMimeTypes[number])) {
     throw new Error(
       `File type ${filetype} is not supported. Allowed types: ${allowedMimeTypes.join(
         ", "

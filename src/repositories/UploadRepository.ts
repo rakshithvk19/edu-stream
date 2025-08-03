@@ -63,7 +63,8 @@ export async function updateUploadProgress(
 ): Promise<void> {
   const supabase = createSupabaseClient();
 
-  const progress = Math.round((bytesUploaded / totalBytes) * 100);
+  // Progress calculation for potential future use
+  // const progress = Math.round((bytesUploaded / totalBytes) * 100);
 
   const { error } = await supabase
     .from('videos')
@@ -100,7 +101,7 @@ export async function markUploadCompleted(videoId: string): Promise<void> {
 /**
  * Mark upload as failed
  */
-export async function markUploadFailed(videoId: string, errorMessage?: string): Promise<void> {
+export async function markUploadFailed(videoId: string, _errorMessage?: string): Promise<void> {
   const supabase = createSupabaseClient();
 
   const { error } = await supabase
@@ -181,7 +182,7 @@ export async function cleanupFailedUploads(olderThanHours: number = 24): Promise
 /**
  * Get recent upload activity
  */
-export async function getRecentUploadActivity(limit: number = 10): Promise<any[]> {
+export async function getRecentUploadActivity(limit: number = 10): Promise<Array<{title: string; status: string; created_at: string; updated_at: string}>> {
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase

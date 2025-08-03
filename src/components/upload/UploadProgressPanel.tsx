@@ -17,11 +17,11 @@ interface UploadProgressPanelProps {
 export default function UploadProgressPanel({
   progress,
   isUploading,
-  success,
-  videoId,
+  success: _success,
+  videoId: _videoId,
   error,
-  onCancel,
-  onReset,
+  onCancel: _onCancel,
+  onReset: _onReset,
 }: UploadProgressPanelProps) {
 
   return (
