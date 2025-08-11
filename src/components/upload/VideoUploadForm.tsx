@@ -6,12 +6,10 @@ import {
   CheckCircle,
   AlertCircle,
   Cloud,
-  Play,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Link from "next/link";
 import { Upload as TusUpload } from "tus-js-client";
 import { CHUNK_SIZE, TUS_RETRY_DELAYS } from "@/lib/constants/upload";
 import UploadProgressPanel from "./UploadProgressPanel";
@@ -23,11 +21,21 @@ import ChapterInput from "./ChapterInput";
 
 // Helper function for formatting file size
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
+  if (!bytes || bytes <= 0) return "0 Bytes";
+  if (!Number.isFinite(bytes)) return "Invalid Size";
+
   const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(k)),
+    sizes.length - 1
+  );
+  const size = bytes / Math.pow(k, i);
+
+  // Use appropriate precision based on size
+  const precision = i === 0 ? 0 : size >= 100 ? 1 : 2;
+
+  return parseFloat(size.toFixed(precision)) + " " + sizes[i];
 }
 
 interface VideoUploadFormProps {
@@ -91,7 +99,7 @@ export default function VideoUploadForm({
     setProgress(0);
     setSuccess(false);
     setIsUploading(false);
-    setVideoId(null);
+    setUploadedVideoId(null);
     setUploadError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -139,8 +147,10 @@ export default function VideoUploadForm({
         },
 
         onError: (error) => {
+          console.error("TUS upload error:", error);
           setIsUploading(false);
           setProgress(0);
+          setUploadError(error.message || "Upload failed");
           reject(error);
         },
 
@@ -328,46 +338,26 @@ export default function VideoUploadForm({
         )}
 
         {/* Progress Panel */}
-        {(isUploading || uploadError) && (
+        {(isUploading || uploadError || success) && (
           <UploadProgressPanel
             progress={progress}
             isUploading={isUploading}
-            success={false}
-            videoId={null}
+            success={success}
+            videoId={uploadedVideoId}
             error={uploadError}
-            onCancel={() => {}}
-            onReset={() => {}}
+            onCancel={() => {
+              if (tusUploadRef.current) {
+                tusUploadRef.current.abort();
+                tusUploadRef.current = null;
+              }
+              setIsUploading(false);
+              setProgress(0);
+            }}
+            onReset={resetForm}
           />
         )}
 
-        {/* Success State */}
-        {success && (
-          <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-6 rounded-xl shadow-lg">
-            <div className="flex items-center mb-3">
-              <CheckCircle className="w-6 h-6 mr-3" />
-              <h3 className="font-bold text-lg">Upload Successful!</h3>
-            </div>
-            <p className="mb-4">
-              Your video has been uploaded successfully and is being processed.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={resetForm}
-                className="px-6 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold transition-colors flex items-center justify-center"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Another Video
-              </button>
-              <Link
-                href="/videos"
-                className="px-6 py-2 bg-white text-green-600 hover:bg-gray-100 rounded-lg font-semibold transition-colors flex items-center justify-center"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                View Videos
-              </Link>
-            </div>
-          </div>
-        )}
+        {/* Success State - Now handled in UploadProgressPanel */}
       </div>
     </div>
   );

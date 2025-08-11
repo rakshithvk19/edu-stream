@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
-
-import * as uploadService from "@/services/UploadService";
+import {
+  handleTusHeadRequest,
+  handleTusPatchRequest,
+  getUploadSession,
+  getUploadProgress,
+} from "@/services/UploadService";
 
 /**
  * OPTIONS - Handle preflight requests
@@ -19,14 +23,13 @@ export async function HEAD(
 ) {
   try {
     const { sessionId } = await params;
-    
-    const response = await uploadService.handleTusHeadRequest(sessionId, req);
+
+    const response = await handleTusHeadRequest(sessionId, req);
     return response;
-    
   } catch (error) {
     console.error("TUS HEAD error:", error);
     return Response.json(
-      { error: 'INTERNAL_ERROR', message: "Failed to get upload status" },
+      { error: "INTERNAL_ERROR", message: "Failed to get upload status" },
       { status: 500 }
     );
   }
@@ -41,14 +44,13 @@ export async function PATCH(
 ) {
   try {
     const { sessionId } = await params;
-    
-    const response = await uploadService.handleTusPatchRequest(sessionId, req);
+
+    const response = await handleTusPatchRequest(sessionId, req);
     return response;
-    
   } catch (error) {
     console.error("TUS PATCH error:", error);
     return Response.json(
-      { error: 'INTERNAL_ERROR', message: "Failed to upload chunk" },
+      { error: "INTERNAL_ERROR", message: "Failed to upload chunk" },
       { status: 500 }
     );
   }
@@ -63,17 +65,17 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params;
-    
-    const session = await uploadService.getUploadSession(sessionId);
-    
+
+    const session = await getUploadSession(sessionId);
+
     if (!session) {
       return Response.json(
-        { error: 'NOT_FOUND', message: "Upload session not found" },
+        { error: "NOT_FOUND", message: "Upload session not found" },
         { status: 404 }
       );
     }
 
-    const progress = await uploadService.getUploadProgress(sessionId);
+    const progress = await getUploadProgress(sessionId);
 
     return Response.json({
       sessionId,
@@ -81,11 +83,10 @@ export async function GET(
       status: "active",
       progress,
     });
-    
   } catch (error) {
     console.error("TUS GET error:", error);
     return Response.json(
-      { error: 'INTERNAL_ERROR', message: "Failed to get session info" },
+      { error: "INTERNAL_ERROR", message: "Failed to get session info" },
       { status: 500 }
     );
   }

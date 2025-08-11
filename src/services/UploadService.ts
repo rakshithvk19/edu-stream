@@ -1,28 +1,21 @@
-import * as uploadsDb from "@/repositories/UploadRepository";
-import * as cloudflare from "@/services/CloudflareService";
+import {
+  fetchUploadSession,
+  markUploadCompleted,
+  markUploadFailed,
+  cleanupFailedUploads,
+  getUploadStats,
+} from "@/repositories/UploadRepository";
+import {
+  parseUploadMetadata,
+  forwardTusRequest,
+} from "@/services/CloudflareService";
 import { MAX_FILE_SIZE, TUS_VERSION } from "@/lib/constants/upload";
-import type { UploadSession } from "@/repositories/UploadRepository";
-
-// Upload service interfaces
-export interface TusHeaders {
-  "upload-length": number;
-  "tus-resumable": string;
-  "upload-metadata"?: string;
-}
-
-export interface TusMetadata {
-  filename?: string;
-  filetype?: string;
-  name: string;
-  description?: string;
-  chapters: string;
-}
-
-export interface UploadProgress {
-  bytesUploaded: number;
-  totalBytes: number;
-  percentage: number;
-}
+import type { UploadSession } from "@/types/repositories/uploadRepository";
+import type {
+  TusHeaders,
+  TusMetadata,
+  UploadProgress,
+} from "@/types/services/upload";
 
 /**
  * Parse TUS headers and validate them
@@ -62,13 +55,33 @@ export function parseTusMetadata(metadataString?: string): TusMetadata {
     throw new Error("Upload metadata is required");
   }
 
-  const metadata = cloudflare.parseUploadMetadata(metadataString);
+  const metadata = parseUploadMetadata(metadataString);
+
+  // Sanitize user input to prevent XSS
+  const sanitizeString = (str: string) => {
+    return str
+      .replace(/[<>"'&]/g, (char) => {
+        const entities: Record<string, string> = {
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#x27;",
+          "&": "&amp;",
+        };
+        return entities[char] || char;
+      })
+      .trim();
+  };
 
   const result: TusMetadata = {
-    name: metadata.name || metadata.filename || "Untitled Video",
+    name: sanitizeString(
+      metadata.name || metadata.filename || "Untitled Video"
+    ),
     filename: metadata.filename,
     filetype: metadata.filetype,
-    description: metadata.description,
+    description: metadata.description
+      ? sanitizeString(metadata.description)
+      : undefined,
     chapters: metadata.chapters || "",
   };
 
@@ -96,7 +109,7 @@ export async function getUploadSession(
   sessionId: string
 ): Promise<UploadSession | null> {
   try {
-    return await uploadsDb.getUploadSession(sessionId);
+    return await fetchUploadSession(sessionId);
   } catch (error) {
     console.error(`Failed to get upload session ${sessionId}:`, error);
     return null;
@@ -110,23 +123,18 @@ export async function handleTusHeadRequest(
   sessionId: string,
   request: Request
 ): Promise<Response> {
-  const session = await getUploadSession(sessionId);
+  const session = await fetchUploadSession(sessionId);
 
   if (!session) {
     return new Response(null, { status: 404 });
   }
 
-  const tusResumable =
-    request.headers.get("Tus-Resumable") || TUS_VERSION;
+  const tusResumable = request.headers.get("Tus-Resumable") || TUS_VERSION;
 
   try {
-    const response = await cloudflare.forwardTusRequest(
-      session.cloudflareUrl,
-      "HEAD",
-      {
-        "Tus-Resumable": tusResumable,
-      }
-    );
+    const response = await forwardTusRequest(session.cloudflareUrl, "HEAD", {
+      "Tus-Resumable": tusResumable,
+    });
 
     // Create response with CORS headers
     const headers = new Headers();
@@ -163,7 +171,7 @@ export async function handleTusPatchRequest(
   sessionId: string,
   request: Request
 ): Promise<Response> {
-  const session = await getUploadSession(sessionId);
+  const session = await fetchUploadSession(sessionId);
 
   if (!session) {
     return new Response(null, { status: 404 });
@@ -191,7 +199,7 @@ export async function handleTusPatchRequest(
     });
 
     // Forward to Cloudflare
-    const response = await cloudflare.forwardTusRequest(
+    const response = await forwardTusRequest(
       session.cloudflareUrl,
       "PATCH",
       cloudflareHeaders,
@@ -227,7 +235,7 @@ export async function handleTusPatchRequest(
 
         // Mark upload as completed
         try {
-          await uploadsDb.markUploadCompleted(session.videoId);
+          await markUploadCompleted(session.videoId);
         } catch (error) {
           console.error(
             `Failed to mark upload completed for ${sessionId}:`,
@@ -246,7 +254,7 @@ export async function handleTusPatchRequest(
 
     // Mark upload as failed
     try {
-      await uploadsDb.markUploadFailed(
+      await markUploadFailed(
         session.videoId,
         error instanceof Error ? error.message : "Unknown error"
       );
@@ -264,20 +272,16 @@ export async function handleTusPatchRequest(
 export async function getUploadProgress(
   sessionId: string
 ): Promise<UploadProgress | null> {
-  const session = await getUploadSession(sessionId);
+  const session = await fetchUploadSession(sessionId);
 
   if (!session) {
     return null;
   }
 
   try {
-    const response = await cloudflare.forwardTusRequest(
-      session.cloudflareUrl,
-      "HEAD",
-      {
-        "Tus-Resumable": TUS_VERSION,
-      }
-    );
+    const response = await forwardTusRequest(session.cloudflareUrl, "HEAD", {
+      "Tus-Resumable": TUS_VERSION,
+    });
 
     const uploadOffset = response.headers.get("Upload-Offset");
     const uploadLength = response.headers.get("Upload-Length");
@@ -304,7 +308,7 @@ export async function getUploadProgress(
  * Cancel upload session
  */
 export async function cancelUpload(sessionId: string): Promise<void> {
-  const session = await getUploadSession(sessionId);
+  const session = await fetchUploadSession(sessionId);
 
   if (!session) {
     throw new Error("Upload session not found");
@@ -312,10 +316,7 @@ export async function cancelUpload(sessionId: string): Promise<void> {
 
   try {
     // Mark as failed in database
-    await uploadsDb.markUploadFailed(
-      session.videoId,
-      "Upload cancelled by user"
-    );
+    await markUploadFailed(session.videoId, "Upload cancelled by user");
   } catch (error) {
     console.error(`Failed to cancel upload ${sessionId}:`, error);
     throw error;
@@ -325,7 +326,7 @@ export async function cancelUpload(sessionId: string): Promise<void> {
 /**
  * Get upload statistics
  */
-export async function getUploadStats(): Promise<{
+export async function fetchUploadStats(): Promise<{
   pending: number;
   uploading: number;
   processing: number;
@@ -334,7 +335,7 @@ export async function getUploadStats(): Promise<{
   total: number;
 }> {
   try {
-    return await uploadsDb.getUploadStats();
+    return await getUploadStats();
   } catch (error) {
     console.error("Failed to get upload stats:", error);
     return {
@@ -351,11 +352,11 @@ export async function getUploadStats(): Promise<{
 /**
  * Clean up old failed uploads
  */
-export async function cleanupFailedUploads(
+export async function handleCleanupFailedUploads(
   olderThanHours: number = 24
 ): Promise<number> {
   try {
-    return await uploadsDb.cleanupFailedUploads(olderThanHours);
+    return await cleanupFailedUploads(olderThanHours);
   } catch (error) {
     console.error("Failed to cleanup failed uploads:", error);
     return 0;
@@ -371,18 +372,20 @@ export function validateFileType(filetype?: string): void {
   }
 
   const allowedMimeTypes = [
-    'video/mp4',
-    'video/mpeg', 
-    'video/quicktime',
-    'video/x-msvideo',
-    'video/x-ms-wmv',
-    'video/x-flv',
-    'video/webm',
-    'video/3gpp',
-    'video/x-matroska',
+    "video/mp4",
+    "video/mpeg",
+    "video/quicktime",
+    "video/x-msvideo",
+    "video/x-ms-wmv",
+    "video/x-flv",
+    "video/webm",
+    "video/3gpp",
+    "video/x-matroska",
   ] as const;
-  
-  if (!allowedMimeTypes.includes(filetype as typeof allowedMimeTypes[number])) {
+
+  if (
+    !allowedMimeTypes.includes(filetype as (typeof allowedMimeTypes)[number])
+  ) {
     throw new Error(
       `File type ${filetype} is not supported. Allowed types: ${allowedMimeTypes.join(
         ", "

@@ -1,23 +1,37 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
-import { Video, Home, Upload, ArrowLeft, Calendar, Clock, Share2, List } from 'lucide-react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import VideoPlayerWithChapters from '@/components/video/VideoPlayerWithChapters';
-import ChaptersSidebar from '@/components/video/ChaptersSidebar';
-import ChaptersBottomSheet from '@/components/video/ChaptersBottomSheet';
-import { formatVideoDuration } from '@/services/VideoStreamingService';
-import type { Chapter } from '@/lib/utils/chapters';
-import type { VideoRecord } from '@/repositories/VideoRepository';
-import type { VideoDetailsResponse, VideoStreamUrlsResponse, VideoErrorResponse } from '@/types/api/video-streaming';
-import type { VideoPlayerWithChaptersRef } from '@/components/video/VideoPlayerWithChapters';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Video,
+  Home,
+  Upload,
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Share2,
+  List,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import VideoPlayerWithChapters from "@/components/video/VideoPlayerWithChapters";
+import ChaptersSidebar from "@/components/video/ChaptersSidebar";
+import ChaptersBottomSheet from "@/components/video/ChaptersBottomSheet";
+import { formatVideoDuration } from "@/services/VideoStreamingService";
+import type { Chapter } from "@/lib/utils/chapters";
+import type {
+  VideoDetailsResponse,
+  VideoStreamUrlsResponse,
+  VideoErrorResponse,
+  VideoRecord,
+  VideoPlayerWithChaptersRef,
+} from "@/types";
 
 export default function VideoPlayerPage() {
   const params = useParams();
   const playerRef = useRef<VideoPlayerWithChaptersRef>(null);
-  
+
   const [video, setVideo] = useState<VideoRecord | null>(null);
-  const [streamingUrls, setStreamingUrls] = useState<VideoStreamUrlsResponse | null>(null);
+  const [streamingUrls, setStreamingUrls] =
+    useState<VideoStreamUrlsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -30,7 +44,7 @@ export default function VideoPlayerPage() {
   // Fetch video details and streaming URLs
   useEffect(() => {
     if (!cloudflareVideoId) {
-      setError('Video ID is required');
+      setError("Video ID is required");
       setLoading(false);
       return;
     }
@@ -42,14 +56,14 @@ export default function VideoPlayerPage() {
 
         // Fetch video details
         const videoResponse = await fetch(`/api/videos/${cloudflareVideoId}`);
-        
+
         if (!videoResponse.ok) {
           const errorData: VideoErrorResponse = await videoResponse.json();
-          
+
           if (videoResponse.status === 404) {
-            setError('Video not found or not ready for streaming');
+            setError("Video not found or not ready for streaming");
           } else {
-            setError(errorData.message || 'Failed to load video');
+            setError(errorData.message || "Failed to load video");
           }
           return;
         }
@@ -58,24 +72,72 @@ export default function VideoPlayerPage() {
         setVideo(videoData.video);
 
         // Load chapters from video metadata
-        if (videoData.video.chapters && Array.isArray(videoData.video.chapters) && videoData.video.chapters.length > 0) {
+        if (
+          videoData.video.chapters &&
+          Array.isArray(videoData.video.chapters) &&
+          videoData.video.chapters.length > 0
+        ) {
           try {
             // Validate that chapters have the expected structure
-            const validChapters = videoData.video.chapters.filter(chapter => 
-              chapter && 
-              typeof chapter.title === 'string' && 
-              typeof chapter.timestamp === 'string' && 
-              typeof chapter.start_seconds === 'number'
+            const validChapters = videoData.video.chapters.filter(
+              (chapter, index) => {
+                if (!chapter) {
+                  console.warn(
+                    `Chapter at index ${index} is null or undefined`
+                  );
+                  return false;
+                }
+
+                if (
+                  typeof chapter.title !== "string" ||
+                  chapter.title.trim().length === 0
+                ) {
+                  console.warn(
+                    `Chapter at index ${index} has invalid title:`,
+                    chapter.title
+                  );
+                  return false;
+                }
+
+                if (
+                  typeof chapter.timestamp !== "string" ||
+                  chapter.timestamp.trim().length === 0
+                ) {
+                  console.warn(
+                    `Chapter at index ${index} has invalid timestamp:`,
+                    chapter.timestamp
+                  );
+                  return false;
+                }
+
+                if (
+                  typeof chapter.start_seconds !== "number" ||
+                  chapter.start_seconds < 0
+                ) {
+                  console.warn(
+                    `Chapter at index ${index} has invalid start_seconds:`,
+                    chapter.start_seconds
+                  );
+                  return false;
+                }
+
+                return true;
+              }
             );
-            
+
             if (validChapters.length > 0) {
-              setChapters(validChapters);
+              // Sort chapters by start_seconds to ensure correct order
+              const sortedChapters = validChapters.sort(
+                (a, b) => a.start_seconds - b.start_seconds
+              );
+              setChapters(sortedChapters);
+              console.log(`Loaded ${sortedChapters.length} valid chapters`);
             } else {
-              console.error('No valid chapters found in video metadata');
+              console.warn("No valid chapters found in video metadata");
               setChapters([]);
             }
           } catch (chapterError) {
-            console.error('Failed to load chapters:', chapterError);
+            console.error("Failed to load chapters:", chapterError);
             setChapters([]);
           }
         } else {
@@ -83,19 +145,20 @@ export default function VideoPlayerPage() {
         }
 
         // Fetch streaming URLs
-        const streamResponse = await fetch(`/api/videos/${cloudflareVideoId}/stream`);
-        
+        const streamResponse = await fetch(
+          `/api/videos/${cloudflareVideoId}/stream`
+        );
+
         if (!streamResponse.ok) {
           const errorData: VideoErrorResponse = await streamResponse.json();
-          setError(errorData.message || 'Failed to load streaming URLs');
+          setError(errorData.message || "Failed to load streaming URLs");
           return;
         }
 
         const streamData: VideoStreamUrlsResponse = await streamResponse.json();
         setStreamingUrls(streamData);
-
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load video');
+        setError(err instanceof Error ? err.message : "Failed to load video");
       } finally {
         setLoading(false);
       }
@@ -108,7 +171,11 @@ export default function VideoPlayerPage() {
   const handlePlayerReady = () => {
     // Small delay to ensure DOM is fully rendered
     setTimeout(() => {
-      if (videoContainerRef.current && chaptersSidebarRef.current && chapters.length > 0) {
+      if (
+        videoContainerRef.current &&
+        chaptersSidebarRef.current &&
+        chapters.length > 0
+      ) {
         const videoHeight = videoContainerRef.current.offsetHeight;
         chaptersSidebarRef.current.style.height = `${videoHeight}px`;
       }
@@ -130,7 +197,11 @@ export default function VideoPlayerPage() {
   // Sync chapters sidebar height with video player height
   useEffect(() => {
     const syncHeights = () => {
-      if (videoContainerRef.current && chaptersSidebarRef.current && chapters.length > 0) {
+      if (
+        videoContainerRef.current &&
+        chaptersSidebarRef.current &&
+        chapters.length > 0
+      ) {
         const videoHeight = videoContainerRef.current.offsetHeight;
         chaptersSidebarRef.current.style.height = `${videoHeight}px`;
       }
@@ -138,11 +209,11 @@ export default function VideoPlayerPage() {
 
     // Sync on load and resize
     syncHeights();
-    window.addEventListener('resize', syncHeights);
+    window.addEventListener("resize", syncHeights);
 
     // Cleanup
     return () => {
-      window.removeEventListener('resize', syncHeights);
+      window.removeEventListener("resize", syncHeights);
     };
   }, [video, streamingUrls, chapters]);
 
@@ -153,13 +224,13 @@ export default function VideoPlayerPage() {
 
   // Format upload date
   const formatUploadDate = (dateString?: string) => {
-    if (!dateString) return 'Unknown date';
-    
+    if (!dateString) return "Unknown date";
+
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -173,7 +244,7 @@ export default function VideoPlayerPage() {
           url: window.location.href,
         });
       } catch (err) {
-        console.log('Share cancelled or failed:', err);
+        console.log("Share cancelled or failed:", err);
       }
     } else {
       // Fallback: copy URL to clipboard
@@ -229,7 +300,7 @@ export default function VideoPlayerPage() {
           <div className="space-y-6">
             {/* Video Player Skeleton */}
             <div className="aspect-video bg-gray-300 rounded-2xl animate-pulse"></div>
-            
+
             {/* Content Skeleton */}
             <div className="space-y-4">
               <div className="h-8 bg-gray-300 rounded w-3/4 animate-pulse"></div>
@@ -253,7 +324,9 @@ export default function VideoPlayerPage() {
         {error && !loading && (
           <div className="text-center py-12">
             <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md mx-auto">
-              <h2 className="text-red-800 font-semibold text-xl mb-2">Error Loading Video</h2>
+              <h2 className="text-red-800 font-semibold text-xl mb-2">
+                Error Loading Video
+              </h2>
               <p className="text-red-600 mb-4">{error}</p>
               <Link
                 href="/videos"
@@ -273,7 +346,7 @@ export default function VideoPlayerPage() {
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Video Player - 75% on desktop, full width on mobile */}
               <div className="w-full lg:w-3/4 flex-shrink-0">
-                <div 
+                <div
                   ref={videoContainerRef}
                   className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 overflow-hidden relative"
                 >
@@ -291,7 +364,7 @@ export default function VideoPlayerPage() {
                     fluid={true}
                     className="w-full"
                   />
-                  
+
                   {/* Mobile Chapters Toggle Button */}
                   {chapters.length > 0 && (
                     <button
@@ -306,7 +379,7 @@ export default function VideoPlayerPage() {
 
               {/* Chapters Sidebar - 25% on desktop, hidden on mobile */}
               {chapters.length > 0 && (
-                <div 
+                <div
                   ref={chaptersSidebarRef}
                   className="hidden lg:flex w-1/4 flex-shrink-0"
                 >
@@ -327,7 +400,7 @@ export default function VideoPlayerPage() {
                   <h1 className="text-3xl font-bold text-gray-900 mb-4 leading-tight">
                     {video.title}
                   </h1>
-                  
+
                   {video.description && (
                     <p className="text-gray-700 text-lg leading-relaxed mb-6">
                       {video.description}
@@ -342,7 +415,7 @@ export default function VideoPlayerPage() {
                         {formatVideoDuration(video.duration_sec)}
                       </div>
                     )}
-                    
+
                     {video.created_at && (
                       <div className="flex items-center">
                         <Calendar className="w-4 h-4 mr-2 text-purple-600" />
@@ -367,7 +440,7 @@ export default function VideoPlayerPage() {
                     <Share2 className="w-4 h-4 mr-2" />
                     Share
                   </button>
-                  
+
                   <Link
                     href="/videos"
                     className="flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200"

@@ -1,15 +1,11 @@
-import * as videoService from './VideoService';
-
-import type { CloudflareStreamWebhookPayload } from '@/types/api/webhook';
-import type { VideoStatus } from '@/repositories/VideoRepository';
-
-// Webhook processing interfaces
-export interface WebhookProcessingResult {
-  success: boolean;
-  videoId: string;
-  action: string;
-  error?: string;
-}
+import { createHmac, timingSafeEqual } from "crypto";
+import {
+  handleVideoStatusUpdate,
+  updateVideoProcessingResults,
+} from "./VideoService";
+import type { CloudflareStreamWebhookPayload } from "@/types/api/webhook";
+import type { VideoStatus } from "@/types/enum";
+import type { WebhookProcessingResult } from "@/types";
 
 /**
  * Verify webhook signature (if secret is configured)
@@ -19,45 +15,71 @@ export function verifyWebhookSignature(
   signature: string | null
 ): boolean {
   if (!process.env.CLOUDFLARE_STREAM_WEBHOOK_SECRET) {
-    console.warn('Webhook secret not configured - signature verification skipped');
+    console.warn(
+      "Webhook secret not configured - signature verification skipped"
+    );
     return true; // Allow webhook if no secret is configured
   }
 
   if (!signature) {
+    console.error("Webhook signature is required but not provided");
     return false;
   }
 
-  // TODO: Implement proper HMAC verification when webhook secret is available
-  // This is a placeholder for basic signature verification
-  // In production, you would use crypto.createHmac to verify the signature
-  
-  // For now, just check if signature exists
-  return signature.length > 0;
+  try {
+    const expectedSignature = createHmac(
+      "sha256",
+      process.env.CLOUDFLARE_STREAM_WEBHOOK_SECRET
+    )
+      .update(payload, "utf8")
+      .digest("hex");
+
+    // Compare signatures using a timing-safe comparison
+    const providedSignature = signature.replace(/^sha256=/, ""); // Remove prefix if present
+
+    if (expectedSignature.length !== providedSignature.length) {
+      return false;
+    }
+
+    return timingSafeEqual(
+      Buffer.from(expectedSignature, "hex"),
+      Buffer.from(providedSignature, "hex")
+    );
+  } catch (error) {
+    console.error("Error verifying webhook signature:", error);
+    return false;
+  }
 }
 
 /**
  * Parse webhook payload and validate structure
  */
-export function parseWebhookPayload(rawPayload: string): CloudflareStreamWebhookPayload {
+export function parseWebhookPayload(
+  rawPayload: string
+): CloudflareStreamWebhookPayload {
   try {
     const payload = JSON.parse(rawPayload);
-    
+
     // Basic validation of required fields
     if (!payload.eventType) {
-      throw new Error('Missing eventType in webhook payload');
+      throw new Error("Missing eventType in webhook payload");
     }
 
     if (!payload.video || !payload.video.uid) {
-      throw new Error('Missing video.uid in webhook payload');
+      throw new Error("Missing video.uid in webhook payload");
     }
 
     if (!payload.video.status || !payload.video.status.state) {
-      throw new Error('Missing video.status.state in webhook payload');
+      throw new Error("Missing video.status.state in webhook payload");
     }
 
     return payload;
   } catch (error) {
-    throw new Error(`Invalid webhook payload: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Invalid webhook payload: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
 }
 
@@ -66,7 +88,7 @@ export function parseWebhookPayload(rawPayload: string): CloudflareStreamWebhook
  */
 export async function processWebhook(
   eventType: string,
-  video: CloudflareStreamWebhookPayload['video']
+  video: CloudflareStreamWebhookPayload["video"]
 ): Promise<WebhookProcessingResult> {
   const videoId = video.uid;
 
@@ -74,14 +96,14 @@ export async function processWebhook(
 
   try {
     switch (eventType) {
-      case 'video.live_input.disconnected':
-      case 'video.live_input.connected':
+      case "video.live_input.disconnected":
+      case "video.live_input.connected":
         // Handle live input events (not applicable for this use case)
         console.log(`Live input event: ${eventType} for video ${videoId}`);
         return {
           success: true,
           videoId,
-          action: 'live_input_event_ignored',
+          action: "live_input_event_ignored",
         };
 
       default:
@@ -89,13 +111,14 @@ export async function processWebhook(
         return await handleVideoStatusChange(video);
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     console.error(`Webhook processing failed for video ${videoId}:`, error);
-    
+
     return {
       success: false,
       videoId,
-      action: 'processing_failed',
+      action: "processing_failed",
       error: errorMessage,
     };
   }
@@ -105,7 +128,7 @@ export async function processWebhook(
  * Handle video status changes from webhook
  */
 async function handleVideoStatusChange(
-  video: CloudflareStreamWebhookPayload['video']
+  video: CloudflareStreamWebhookPayload["video"]
 ): Promise<WebhookProcessingResult> {
   const { uid, status, duration, size } = video;
   const state = status.state;
@@ -114,10 +137,10 @@ async function handleVideoStatusChange(
 
   // Map Cloudflare states to our video statuses
   const statusMap: Record<string, VideoStatus> = {
-    'pendingupload': 'pending',
-    'inprogress': 'processing',
-    'ready': 'ready',
-    'error': 'error',
+    pendingupload: "pending",
+    inprogress: "processing",
+    ready: "ready",
+    error: "error",
   };
 
   const newStatus = statusMap[state];
@@ -126,38 +149,40 @@ async function handleVideoStatusChange(
     return {
       success: false,
       videoId: uid,
-      action: 'unknown_status',
+      action: "unknown_status",
       error: `Unknown video status: ${state}`,
     };
   }
 
   try {
     switch (state) {
-      case 'pendingupload':
-        await videoService.updateVideoStatus(uid, 'pending');
+      case "pendingupload":
+        await handleVideoStatusUpdate(uid, "pending");
         return {
           success: true,
           videoId: uid,
-          action: 'status_updated_to_pending',
+          action: "status_updated_to_pending",
         };
 
-      case 'inprogress':
-        await videoService.updateVideoStatus(uid, 'processing');
-        
+      case "inprogress":
+        await handleVideoStatusUpdate(uid, "processing");
+
         if (status.pctComplete) {
-          console.log(`Video ${uid} processing: ${status.pctComplete}% complete`);
+          console.log(
+            `Video ${uid} processing: ${status.pctComplete}% complete`
+          );
         }
-        
+
         return {
           success: true,
           videoId: uid,
-          action: 'status_updated_to_processing',
+          action: "status_updated_to_processing",
         };
 
-      case 'ready':
+      case "ready":
         // Update video with all processing results
-        await videoService.updateVideoProcessingResults(uid, {
-          status: 'ready',
+        await updateVideoProcessingResults(uid, {
+          status: "ready",
           playbackId: uid, // In Cloudflare Stream, playback ID is the same as video UID
           durationSec: duration ? Math.round(duration) : undefined,
           sizeBytes: size,
@@ -165,23 +190,24 @@ async function handleVideoStatusChange(
         });
 
         console.log(`Video ${uid} is ready for playback`);
-        
+
         return {
           success: true,
           videoId: uid,
-          action: 'status_updated_to_ready',
+          action: "status_updated_to_ready",
         };
 
-      case 'error':
-        const errorMessage = status.errorReasonText || 'Video processing failed';
+      case "error":
+        const errorMessage =
+          status.errorReasonText || "Video processing failed";
         console.error(`Video ${uid} processing failed: ${errorMessage}`);
-        
-        await videoService.updateVideoStatus(uid, 'error');
-        
+
+        await handleVideoStatusUpdate(uid, "error");
+
         return {
           success: true,
           videoId: uid,
-          action: 'status_updated_to_error',
+          action: "status_updated_to_error",
           error: errorMessage,
         };
 
@@ -189,18 +215,19 @@ async function handleVideoStatusChange(
         return {
           success: false,
           videoId: uid,
-          action: 'unhandled_status',
+          action: "unhandled_status",
           error: `Unhandled video status: ${state}`,
         };
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     console.error(`Failed to update video ${uid}:`, error);
-    
+
     return {
       success: false,
       videoId: uid,
-      action: 'database_update_failed',
+      action: "database_update_failed",
       error: errorMessage,
     };
   }
@@ -236,15 +263,17 @@ export function validateWebhookConfig(): {
   const errors: string[] = [];
 
   if (!process.env.CLOUDFLARE_STREAM_WEBHOOK_SECRET) {
-    warnings.push('Webhook secret not configured - signature verification disabled');
+    warnings.push(
+      "Webhook secret not configured - signature verification disabled"
+    );
   }
 
   if (!process.env.CLOUDFLARE_API_TOKEN) {
-    errors.push('Cloudflare API token not configured');
+    errors.push("Cloudflare API token not configured");
   }
 
   if (!process.env.CLOUDFLARE_ACCOUNT_ID) {
-    errors.push('Cloudflare account ID not configured');
+    errors.push("Cloudflare account ID not configured");
   }
 
   return {
@@ -261,17 +290,18 @@ export function handleWebhookError(
   error: unknown,
   videoId?: string
 ): WebhookProcessingResult {
-  const errorMessage = error instanceof Error ? error.message : 'Unknown webhook error';
-  
-  console.error('Webhook processing error:', {
+  const errorMessage =
+    error instanceof Error ? error.message : "Unknown webhook error";
+
+  console.error("Webhook processing error:", {
     error: errorMessage,
     videoId,
   });
 
   return {
     success: false,
-    videoId: videoId || 'unknown',
-    action: 'webhook_error',
+    videoId: videoId || "unknown",
+    action: "webhook_error",
     error: errorMessage,
   };
 }
@@ -288,10 +318,12 @@ export async function processWebhookWithRetry(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const result = await processWebhook(payload.eventType, payload.video);
-      
+
       if (result.success) {
         if (attempt > 1) {
-          console.log(`Webhook processing succeeded on attempt ${attempt} for video ${result.videoId}`);
+          console.log(
+            `Webhook processing succeeded on attempt ${attempt} for video ${result.videoId}`
+          );
         }
         return result;
       }
@@ -302,20 +334,22 @@ export async function processWebhookWithRetry(
 
       // Wait before retrying (exponential backoff)
       const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s, etc.
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
+      await new Promise((resolve) => setTimeout(resolve, delay));
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error('Unknown error');
-      
+      lastError = error instanceof Error ? error : new Error("Unknown error");
+
       if (attempt === maxRetries) {
         break;
       }
 
-      console.warn(`Webhook processing attempt ${attempt} failed, retrying...`, lastError.message);
-      
+      console.warn(
+        `Webhook processing attempt ${attempt} failed, retrying...`,
+        lastError.message
+      );
+
       // Wait before retrying
       const delay = Math.pow(2, attempt - 1) * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 

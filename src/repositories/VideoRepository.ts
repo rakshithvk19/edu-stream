@@ -1,60 +1,35 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-
-// Video status enum
-export type VideoStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'error';
-
-// Video record interface
-export interface VideoRecord {
-  id?: string;
-  title: string;
-  description?: string;
-  cloudflare_video_id: string;
-  playback_id?: string | null;
-  duration_sec?: number | null;
-  size_bytes?: number | null;
-  thumbnail_url?: string | null;
-  status: VideoStatus;
-  created_at?: string;
-  updated_at?: string;
-  cloudflare_upload_id?: string | null;
-  chapters?: Array<{title: string; timestamp: string; start_seconds: number}> | null; // JSONB array of chapter objects
-}
-
-// Create video data interface
-export interface CreateVideoData {
-  title: string;
-  description?: string;
-  cloudflare_video_id: string;
-  size_bytes: number;
-  cloudflare_upload_id: string;
-  chapters?: Array<{title: string; timestamp: string; start_seconds: number}>; // JSONB array of chapter objects
-}
-
-// Update video data interface
-export interface UpdateVideoData {
-  status?: VideoStatus;
-  playback_id?: string;
-  duration_sec?: number;
-  size_bytes?: number;
-  thumbnail_url?: string;
-  updated_at?: string;
-}
+import {
+  VideoRecord,
+  CreateVideoData,
+  UpdateVideoData,
+} from "../types/repositories/videoRepository";
+import { VideoStatus } from "../types/enum";
 
 /**
  * Create Supabase client for database operations
  */
 function createSupabaseClient() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { 
-      auth: { 
-        persistSession: false, 
-        autoRefreshToken: false 
-      } 
-    }
-  );
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error("SUPABASE_URL environment variable is required");
+  }
+
+  if (!supabaseServiceKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY environment variable is required"
+    );
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
 /**
@@ -62,16 +37,16 @@ function createSupabaseClient() {
  */
 export async function insertVideo(data: CreateVideoData): Promise<VideoRecord> {
   const supabase = createSupabaseClient();
-  
+
   const videoData: Partial<VideoRecord> = {
     title: data.title,
-    description: data.description || '',
+    description: data.description || "",
     cloudflare_video_id: data.cloudflare_video_id,
     playback_id: null,
     duration_sec: null,
     size_bytes: data.size_bytes,
     thumbnail_url: null,
-    status: 'pending',
+    status: "pending",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     cloudflare_upload_id: data.cloudflare_upload_id,
@@ -79,7 +54,7 @@ export async function insertVideo(data: CreateVideoData): Promise<VideoRecord> {
   };
 
   const { data: video, error } = await supabase
-    .from('videos')
+    .from("videos")
     .insert(videoData)
     .select()
     .single();
@@ -94,17 +69,19 @@ export async function insertVideo(data: CreateVideoData): Promise<VideoRecord> {
 /**
  * Get video by Cloudflare video ID
  */
-export async function getVideoByCloudflareId(cloudflareVideoId: string): Promise<VideoRecord | null> {
+export async function getVideoByCloudflareId(
+  cloudflareVideoId: string
+): Promise<VideoRecord | null> {
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('cloudflare_video_id', cloudflareVideoId)
+    .from("videos")
+    .select("*")
+    .eq("cloudflare_video_id", cloudflareVideoId)
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
+    if (error.code === "PGRST116") {
       // No rows returned
       return null;
     }
@@ -121,13 +98,13 @@ export async function getVideoById(id: string): Promise<VideoRecord | null> {
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('id', id)
+    .from("videos")
+    .select("*")
+    .eq("id", id)
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
+    if (error.code === "PGRST116") {
       // No rows returned
       return null;
     }
@@ -141,7 +118,7 @@ export async function getVideoById(id: string): Promise<VideoRecord | null> {
  * Update video by Cloudflare video ID
  */
 export async function updateVideoByCloudflareId(
-  cloudflareVideoId: string, 
+  cloudflareVideoId: string,
   updates: UpdateVideoData
 ): Promise<VideoRecord> {
   const supabase = createSupabaseClient();
@@ -152,9 +129,9 @@ export async function updateVideoByCloudflareId(
   };
 
   const { data, error } = await supabase
-    .from('videos')
+    .from("videos")
     .update(updateData)
-    .eq('cloudflare_video_id', cloudflareVideoId)
+    .eq("cloudflare_video_id", cloudflareVideoId)
     .select()
     .single();
 
@@ -169,7 +146,7 @@ export async function updateVideoByCloudflareId(
  * Update video status
  */
 export async function updateVideoStatus(
-  cloudflareVideoId: string, 
+  cloudflareVideoId: string,
   status: VideoStatus
 ): Promise<void> {
   await updateVideoByCloudflareId(cloudflareVideoId, { status });
@@ -179,7 +156,7 @@ export async function updateVideoStatus(
  * Get all videos with pagination
  */
 export async function getVideos(
-  page: number = 1, 
+  page: number = 1,
   limit: number = 10
 ): Promise<{ videos: VideoRecord[]; total: number }> {
   const supabase = createSupabaseClient();
@@ -187,8 +164,8 @@ export async function getVideos(
 
   // Get total count
   const { count, error: countError } = await supabase
-    .from('videos')
-    .select('*', { count: 'exact', head: true });
+    .from("videos")
+    .select("*", { count: "exact", head: true });
 
   if (countError) {
     throw new Error(`Failed to get video count: ${countError.message}`);
@@ -196,9 +173,9 @@ export async function getVideos(
 
   // Get videos
   const { data: videos, error } = await supabase
-    .from('videos')
-    .select('*')
-    .order('created_at', { ascending: false })
+    .from("videos")
+    .select("*")
+    .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) {
@@ -218,9 +195,9 @@ export async function deleteVideo(cloudflareVideoId: string): Promise<void> {
   const supabase = createSupabaseClient();
 
   const { error } = await supabase
-    .from('videos')
+    .from("videos")
     .delete()
-    .eq('cloudflare_video_id', cloudflareVideoId);
+    .eq("cloudflare_video_id", cloudflareVideoId);
 
   if (error) {
     throw new Error(`Failed to delete video: ${error.message}`);
@@ -230,14 +207,16 @@ export async function deleteVideo(cloudflareVideoId: string): Promise<void> {
 /**
  * Get videos by status
  */
-export async function getVideosByStatus(status: VideoStatus): Promise<VideoRecord[]> {
+export async function getVideosByStatus(
+  status: VideoStatus
+): Promise<VideoRecord[]> {
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('status', status)
-    .order('created_at', { ascending: false });
+    .from("videos")
+    .select("*")
+    .eq("status", status)
+    .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(`Failed to get videos by status: ${error.message}`);
@@ -258,22 +237,26 @@ export async function getReadyVideos(
   const offset = (page - 1) * limit;
 
   let countQuery = supabase
-    .from('videos')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'ready');
+    .from("videos")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "ready");
 
   let dataQuery = supabase
-    .from('videos')
-    .select('*')
-    .eq('status', 'ready')
-    .order('created_at', { ascending: false })
+    .from("videos")
+    .select("*")
+    .eq("status", "ready")
+    .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
   // Add search functionality if query provided
   if (searchQuery && searchQuery.trim().length > 0) {
     const searchTerm = searchQuery.trim();
-    countQuery = countQuery.or(`title.ilike.*${searchTerm}*,description.ilike.*${searchTerm}*`);
-    dataQuery = dataQuery.or(`title.ilike.*${searchTerm}*,description.ilike.*${searchTerm}*`);
+    countQuery = countQuery.or(
+      `title.ilike.*${searchTerm}*,description.ilike.*${searchTerm}*`
+    );
+    dataQuery = dataQuery.or(
+      `title.ilike.*${searchTerm}*,description.ilike.*${searchTerm}*`
+    );
   }
 
   // Get total count
@@ -299,18 +282,20 @@ export async function getReadyVideos(
 /**
  * Get video for streaming (single video with validation)
  */
-export async function getVideoForStreaming(cloudflareVideoId: string): Promise<VideoRecord | null> {
+export async function getVideoForStreaming(
+  cloudflareVideoId: string
+): Promise<VideoRecord | null> {
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('cloudflare_video_id', cloudflareVideoId)
-    .eq('status', 'ready')
+    .from("videos")
+    .select("*")
+    .eq("cloudflare_video_id", cloudflareVideoId)
+    .eq("status", "ready")
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
+    if (error.code === "PGRST116") {
       // No rows returned
       return null;
     }

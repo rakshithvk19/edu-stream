@@ -1,42 +1,47 @@
-import { createClient } from '@supabase/supabase-js';
-
-
-// Upload session interface
-export interface UploadSession {
-  cloudflareUrl: string;
-  videoId: string;
-}
+import { createClient } from "@supabase/supabase-js";
+import { UploadSession } from "@/types/repositories/uploadRepository";
 
 /**
  * Create Supabase client for upload operations
  */
 function createSupabaseClient() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { 
-      auth: { 
-        persistSession: false, 
-        autoRefreshToken: false 
-      } 
-    }
-  );
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error("SUPABASE_URL environment variable is required");
+  }
+
+  if (!supabaseServiceKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY environment variable is required"
+    );
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
 /**
  * Get upload session by video ID
  */
-export async function getUploadSession(videoId: string): Promise<UploadSession | null> {
+export async function fetchUploadSession(
+  videoId: string
+): Promise<UploadSession | null> {
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
-    .from('videos')
-    .select('cloudflare_upload_id, cloudflare_video_id')
-    .eq('cloudflare_video_id', videoId)
+    .from("videos")
+    .select("cloudflare_upload_id, cloudflare_video_id")
+    .eq("cloudflare_video_id", videoId)
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
+    if (error.code === "PGRST116") {
       // No rows returned
       return null;
     }
@@ -44,7 +49,7 @@ export async function getUploadSession(videoId: string): Promise<UploadSession |
   }
 
   if (!data.cloudflare_upload_id) {
-    throw new Error('Upload session not found or invalid');
+    throw new Error("Upload session not found or invalid");
   }
 
   return {
@@ -56,23 +61,16 @@ export async function getUploadSession(videoId: string): Promise<UploadSession |
 /**
  * Update upload progress in database
  */
-export async function updateUploadProgress(
-  videoId: string,
-  bytesUploaded: number,
-  totalBytes: number
-): Promise<void> {
+export async function updateUploadProgress(videoId: string): Promise<void> {
   const supabase = createSupabaseClient();
 
-  // Progress calculation for potential future use
-  // const progress = Math.round((bytesUploaded / totalBytes) * 100);
-
   const { error } = await supabase
-    .from('videos')
+    .from("videos")
     .update({
       // You could add a progress field to track upload progress
       updated_at: new Date().toISOString(),
     })
-    .eq('cloudflare_video_id', videoId);
+    .eq("cloudflare_video_id", videoId);
 
   if (error) {
     throw new Error(`Failed to update upload progress: ${error.message}`);
@@ -86,12 +84,12 @@ export async function markUploadCompleted(videoId: string): Promise<void> {
   const supabase = createSupabaseClient();
 
   const { error } = await supabase
-    .from('videos')
+    .from("videos")
     .update({
-      status: 'uploading',
+      status: "uploading",
       updated_at: new Date().toISOString(),
     })
-    .eq('cloudflare_video_id', videoId);
+    .eq("cloudflare_video_id", videoId);
 
   if (error) {
     throw new Error(`Failed to mark upload as completed: ${error.message}`);
@@ -101,17 +99,20 @@ export async function markUploadCompleted(videoId: string): Promise<void> {
 /**
  * Mark upload as failed
  */
-export async function markUploadFailed(videoId: string, _errorMessage?: string): Promise<void> {
+export async function markUploadFailed(
+  videoId: string,
+  _errorMessage?: string
+): Promise<void> {
   const supabase = createSupabaseClient();
 
   const { error } = await supabase
-    .from('videos')
+    .from("videos")
     .update({
-      status: 'error',
+      status: "error",
       updated_at: new Date().toISOString(),
       // You could add an error_message field to store the error
     })
-    .eq('cloudflare_video_id', videoId);
+    .eq("cloudflare_video_id", videoId);
 
   if (error) {
     throw new Error(`Failed to mark upload as failed: ${error.message}`);
@@ -132,9 +133,9 @@ export async function getUploadStats(): Promise<{
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
-    .from('videos')
-    .select('status')
-    .order('created_at', { ascending: false });
+    .from("videos")
+    .select("status")
+    .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(`Failed to get upload stats: ${error.message}`);
@@ -149,7 +150,7 @@ export async function getUploadStats(): Promise<{
     total: data?.length || 0,
   };
 
-  data?.forEach(video => {
+  data?.forEach((video) => {
     if (stats.hasOwnProperty(video.status)) {
       (stats as any)[video.status]++;
     }
@@ -159,17 +160,21 @@ export async function getUploadStats(): Promise<{
 }
 
 /**
- * Clean up old failed uploads (utility function)
+ * Clean up old failed uploads
  */
-export async function cleanupFailedUploads(olderThanHours: number = 24): Promise<number> {
+export async function cleanupFailedUploads(
+  olderThanHours: number = 24
+): Promise<number> {
   const supabase = createSupabaseClient();
-  const cutoffTime = new Date(Date.now() - olderThanHours * 60 * 60 * 1000).toISOString();
+  const cutoffTime = new Date(
+    Date.now() - olderThanHours * 60 * 60 * 1000
+  ).toISOString();
 
   const { data, error } = await supabase
-    .from('videos')
+    .from("videos")
     .delete()
-    .eq('status', 'error')
-    .lt('updated_at', cutoffTime)
+    .eq("status", "error")
+    .lt("updated_at", cutoffTime)
     .select();
 
   if (error) {
@@ -182,13 +187,20 @@ export async function cleanupFailedUploads(olderThanHours: number = 24): Promise
 /**
  * Get recent upload activity
  */
-export async function getRecentUploadActivity(limit: number = 10): Promise<Array<{title: string; status: string; created_at: string; updated_at: string}>> {
+export async function getRecentUploadActivity(limit: number = 10): Promise<
+  Array<{
+    title: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+  }>
+> {
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
-    .from('videos')
-    .select('title, status, created_at, updated_at')
-    .order('updated_at', { ascending: false })
+    .from("videos")
+    .select("title, status, created_at, updated_at")
+    .order("updated_at", { ascending: false })
     .limit(limit);
 
   if (error) {

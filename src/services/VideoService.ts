@@ -1,43 +1,55 @@
-import * as videoDb from '@/repositories/VideoRepository';
-import * as cloudflare from '@/services/CloudflareService';
-import type { VideoRecord, VideoStatus, CreateVideoData } from '@/repositories/VideoRepository';
-import { parseChaptersFromText } from '@/lib/utils/chapters';
-
-// Video service interfaces
-export interface CreateVideoRequest {
-  title: string;
-  description?: string;
-  uploadLength: number;
-  tusResumable: string;
-  chapters: string;
-}
-
-export interface VideoWithCloudflareInfo extends VideoRecord {
-  cloudflareInfo?: cloudflare.CloudflareVideoInfo;
-}
+import {
+  insertVideo,
+  getVideoById,
+  updateVideoByCloudflareId,
+  getVideosByStatus,
+  deleteVideo,
+  getVideoByCloudflareId,
+  getVideos,
+} from "@/repositories/VideoRepository";
+import {
+  createCloudflareUploadSession,
+  getCloudflareVideoInfo,
+  deleteCloudflareVideo,
+  getVideoThumbnailUrl,
+  getVideoPreviewUrl,
+} from "@/services/CloudflareService";
+import type {
+  VideoRecord,
+  CreateVideoData,
+  CreateVideoRequest,
+  VideoWithCloudflareInfo,
+  CloudflareUploadSession,
+  VideoStatus,
+} from "@/types";
+import { parseChaptersFromText } from "@/lib/utils/chapters";
 
 /**
  * Create a new video with Cloudflare upload session
  */
 export async function createVideo(request: CreateVideoRequest): Promise<{
   video: VideoRecord;
-  uploadSession: cloudflare.CloudflareUploadSession;
+  uploadSession: CloudflareUploadSession;
 }> {
   // Validate input
   if (!request.title || request.title.trim().length === 0) {
-    throw new Error('Video title is required');
+    throw new Error("Video title is required");
   }
 
   if (request.title.length > 255) {
-    throw new Error('Video title must be less than 255 characters');
+    throw new Error("Video title must be less than 255 characters");
   }
 
   if (request.description && request.description.length > 1000) {
-    throw new Error('Video description must be less than 1000 characters');
+    throw new Error("Video description must be less than 1000 characters");
   }
 
   // Process chapters if provided
-  let processedChapters: Array<{title: string; timestamp: string; start_seconds: number}> = [];
+  let processedChapters: Array<{
+    title: string;
+    timestamp: string;
+    start_seconds: number;
+  }> = [];
   if (request.chapters && request.chapters.trim()) {
     const { chapters, errors } = parseChaptersFromText(request.chapters);
     if (errors.length > 0) {
@@ -47,7 +59,7 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
   }
 
   // Create upload session in Cloudflare
-  const uploadSession = await cloudflare.createCloudflareUploadSession({
+  const uploadSession = await createCloudflareUploadSession({
     title: request.title.trim(),
     description: request.description?.trim(),
     uploadLength: request.uploadLength,
@@ -64,7 +76,7 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
     chapters: processedChapters,
   };
 
-  const video = await videoDb.insertVideo(videoData);
+  const video = await insertVideo(videoData);
 
   return {
     video,
@@ -76,24 +88,29 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
  * Get video by ID with optional Cloudflare info
  */
 export async function getVideo(
-  videoId: string, 
+  videoId: string,
   includeCloudflareInfo: boolean = false
 ): Promise<VideoWithCloudflareInfo | null> {
-  const video = await videoDb.getVideoById(videoId);
-  
+  const video = await getVideoById(videoId);
+
   if (!video) {
     return null;
   }
 
   if (includeCloudflareInfo) {
     try {
-      const cloudflareInfo = await cloudflare.getCloudflareVideoInfo(video.cloudflare_video_id);
+      const cloudflareInfo = await getCloudflareVideoInfo(
+        video.cloudflare_video_id
+      );
       return {
         ...video,
         cloudflareInfo,
       };
     } catch (error) {
-      console.warn(`Failed to get Cloudflare info for video ${videoId}:`, error);
+      console.warn(
+        `Failed to get Cloudflare info for video ${videoId}:`,
+        error
+      );
       return video;
     }
   }
@@ -104,25 +121,28 @@ export async function getVideo(
 /**
  * Get video by Cloudflare video ID
  */
-export async function getVideoByCloudflareId(
+export async function fetchVideoByCloudflareId(
   cloudflareVideoId: string,
   includeCloudflareInfo: boolean = false
 ): Promise<VideoWithCloudflareInfo | null> {
-  const video = await videoDb.getVideoByCloudflareId(cloudflareVideoId);
-  
+  const video = await getVideoByCloudflareId(cloudflareVideoId);
+
   if (!video) {
     return null;
   }
 
   if (includeCloudflareInfo) {
     try {
-      const cloudflareInfo = await cloudflare.getCloudflareVideoInfo(cloudflareVideoId);
+      const cloudflareInfo = await getCloudflareVideoInfo(cloudflareVideoId);
       return {
         ...video,
         cloudflareInfo,
       };
     } catch (error) {
-      console.warn(`Failed to get Cloudflare info for video ${cloudflareVideoId}:`, error);
+      console.warn(
+        `Failed to get Cloudflare info for video ${cloudflareVideoId}:`,
+        error
+      );
       return video;
     }
   }
@@ -133,11 +153,11 @@ export async function getVideoByCloudflareId(
 /**
  * Update video status
  */
-export async function updateVideoStatus(
+export async function handleVideoStatusUpdate(
   cloudflareVideoId: string,
   status: VideoStatus
 ): Promise<VideoRecord> {
-  return await videoDb.updateVideoByCloudflareId(cloudflareVideoId, { status });
+  return await updateVideoByCloudflareId(cloudflareVideoId, { status });
 }
 
 /**
@@ -161,13 +181,13 @@ export async function updateVideoProcessingResults(
     thumbnail_url: updates.thumbnailUrl,
   };
 
-  return await videoDb.updateVideoByCloudflareId(cloudflareVideoId, updateData);
+  return await updateVideoByCloudflareId(cloudflareVideoId, updateData);
 }
 
 /**
  * Get videos with pagination
  */
-export async function getVideos(
+export async function fetchVideos(
   page: number = 1,
   limit: number = 10,
   status?: VideoStatus
@@ -182,13 +202,13 @@ export async function getVideos(
   let total: number;
 
   if (status) {
-    videos = await videoDb.getVideosByStatus(status);
+    videos = await getVideosByStatus(status);
     total = videos.length;
     // Apply pagination manually for filtered results
     const startIndex = (page - 1) * limit;
     videos = videos.slice(startIndex, startIndex + limit);
   } else {
-    const result = await videoDb.getVideos(page, limit);
+    const result = await getVideos(page, limit);
     videos = result.videos;
     total = result.total;
   }
@@ -205,39 +225,46 @@ export async function getVideos(
 /**
  * Delete video (from both database and Cloudflare)
  */
-export async function deleteVideo(cloudflareVideoId: string): Promise<void> {
+export async function handleVideoDelete(
+  cloudflareVideoId: string
+): Promise<void> {
   // Delete from Cloudflare first
   try {
-    await cloudflare.deleteCloudflareVideo(cloudflareVideoId);
+    await deleteCloudflareVideo(cloudflareVideoId);
   } catch (error) {
     console.warn(`Failed to delete video from Cloudflare: ${error}`);
     // Continue with database deletion even if Cloudflare deletion fails
   }
 
   // Delete from database
-  await videoDb.deleteVideo(cloudflareVideoId);
+  await deleteVideo(cloudflareVideoId);
 }
 
 /**
  * Get video streaming URLs
  */
-export async function getVideoStreamingUrls(cloudflareVideoId: string): Promise<{
+export async function getVideoStreamingUrls(
+  cloudflareVideoId: string
+): Promise<{
   hls?: string;
   dash?: string;
   thumbnail: string;
   preview: string;
 } | null> {
   try {
-    const cloudflareInfo = await cloudflare.getCloudflareVideoInfo(cloudflareVideoId);
-    
+    const cloudflareInfo = await getCloudflareVideoInfo(cloudflareVideoId);
+
     return {
       hls: cloudflareInfo.playback?.hls,
       dash: cloudflareInfo.playback?.dash,
-      thumbnail: cloudflare.getVideoThumbnailUrl(cloudflareVideoId),
-      preview: cloudflare.getVideoPreviewUrl(cloudflareVideoId),
+      thumbnail: getVideoThumbnailUrl(cloudflareVideoId),
+      preview: getVideoPreviewUrl(cloudflareVideoId),
     };
   } catch (error) {
-    console.error(`Failed to get streaming URLs for video ${cloudflareVideoId}:`, error);
+    console.error(
+      `Failed to get streaming URLs for video ${cloudflareVideoId}:`,
+      error
+    );
     return null;
   }
 }
@@ -245,27 +272,32 @@ export async function getVideoStreamingUrls(cloudflareVideoId: string): Promise<
 /**
  * Sync video status with Cloudflare
  */
-export async function syncVideoWithCloudflare(cloudflareVideoId: string): Promise<VideoRecord> {
-  const cloudflareInfo = await cloudflare.getCloudflareVideoInfo(cloudflareVideoId);
-  
+export async function syncVideoWithCloudflare(
+  cloudflareVideoId: string
+): Promise<VideoRecord> {
+  const cloudflareInfo = await getCloudflareVideoInfo(cloudflareVideoId);
+
   const statusMap: Record<string, VideoStatus> = {
-    'pendingupload': 'pending',
-    'inprogress': 'processing',
-    'ready': 'ready',
-    'error': 'error',
+    pendingupload: "pending",
+    inprogress: "processing",
+    ready: "ready",
+    error: "error",
   };
 
-  const status = statusMap[cloudflareInfo.status.state] || 'error';
-  
+  const status = statusMap[cloudflareInfo.status.state] || "error";
+
   const updates = {
     status,
-    playback_id: status === 'ready' ? cloudflareInfo.uid : undefined,
-    duration_sec: cloudflareInfo.duration ? Math.round(cloudflareInfo.duration) : undefined,
+    playback_id: status === "ready" ? cloudflareInfo.uid : undefined,
+    duration_sec: cloudflareInfo.duration
+      ? Math.round(cloudflareInfo.duration)
+      : undefined,
     size_bytes: cloudflareInfo.size,
-    thumbnail_url: status === 'ready' ? cloudflare.getVideoThumbnailUrl(cloudflareInfo.uid) : undefined,
+    thumbnail_url:
+      status === "ready" ? getVideoThumbnailUrl(cloudflareInfo.uid) : undefined,
   };
 
-  return await videoDb.updateVideoByCloudflareId(cloudflareVideoId, updates);
+  return await updateVideoByCloudflareId(cloudflareVideoId, updates);
 }
 
 /**
@@ -277,8 +309,8 @@ export async function getVideoStats(): Promise<{
   totalSize: number;
   totalDuration: number;
 }> {
-  const { videos: allVideos } = await videoDb.getVideos(1, 1000); // Get all videos for stats
-  
+  const { videos: allVideos } = await getVideos(1, 1000); // Get all videos for stats
+
   const stats = {
     total: allVideos.length,
     byStatus: {
@@ -292,7 +324,7 @@ export async function getVideoStats(): Promise<{
     totalDuration: 0,
   };
 
-  allVideos.forEach(video => {
+  allVideos.forEach((video) => {
     stats.byStatus[video.status]++;
     if (video.size_bytes) {
       stats.totalSize += video.size_bytes;

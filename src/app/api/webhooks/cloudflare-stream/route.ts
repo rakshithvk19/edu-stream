@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
-
-import * as webhookService from "@/services/WebhookService";
+import {
+  verifyWebhookSignature,
+  parseWebhookPayload,
+  processWebhookWithRetry,
+  validateWebhookConfig,
+} from "@/services/WebhookService";
 
 /**
  * POST - Handle Cloudflare Stream webhooks
@@ -12,12 +16,12 @@ export async function POST(req: NextRequest) {
 
     // 2. Verify webhook signature if configured
     const signature = req.headers.get("cf-webhook-signature");
-    const isValidSignature = webhookService.verifyWebhookSignature(rawBody, signature);
+    const isValidSignature = verifyWebhookSignature(rawBody, signature);
 
     if (!isValidSignature) {
       console.error("Invalid webhook signature");
       return Response.json(
-        { error: 'UNAUTHORIZED', message: "Invalid webhook signature" },
+        { error: "UNAUTHORIZED", message: "Invalid webhook signature" },
         { status: 401 }
       );
     }
@@ -25,13 +29,14 @@ export async function POST(req: NextRequest) {
     // 3. Parse and validate payload
     let payload;
     try {
-      payload = webhookService.parseWebhookPayload(rawBody);
+      payload = parseWebhookPayload(rawBody);
     } catch (error) {
       console.error("Failed to parse webhook payload:", error);
       return Response.json(
         {
-          error: 'INVALID_REQUEST',
-          message: error instanceof Error ? error.message : "Invalid webhook payload"
+          error: "INVALID_REQUEST",
+          message:
+            error instanceof Error ? error.message : "Invalid webhook payload",
         },
         { status: 400 }
       );
@@ -43,31 +48,32 @@ export async function POST(req: NextRequest) {
     );
 
     // 5. Process webhook with retry logic
-    const result = await webhookService.processWebhookWithRetry(payload);
+    const result = await processWebhookWithRetry(payload);
 
     if (!result.success) {
       console.error(`Webhook processing failed: ${result.error}`);
       // Still return 200 to prevent webhook retries for application errors
-      return Response.json({ 
-        received: true, 
-        processed: false, 
-        error: result.error 
+      return Response.json({
+        received: true,
+        processed: false,
+        error: result.error,
       });
     }
 
-    console.log(`Webhook processed successfully: ${result.action} for video ${result.videoId}`);
+    console.log(
+      `Webhook processed successfully: ${result.action} for video ${result.videoId}`
+    );
 
-    return Response.json({ 
-      received: true, 
+    return Response.json({
+      received: true,
       processed: true,
       action: result.action,
-      videoId: result.videoId
+      videoId: result.videoId,
     });
-
   } catch (error) {
     console.error("Webhook processing error:", error);
     return Response.json(
-      { error: 'INTERNAL_ERROR', message: "Failed to process webhook" },
+      { error: "INTERNAL_ERROR", message: "Failed to process webhook" },
       { status: 500 }
     );
   }
@@ -78,8 +84,8 @@ export async function POST(req: NextRequest) {
  */
 export async function GET() {
   try {
-    const configValidation = webhookService.validateWebhookConfig();
-    
+    const configValidation = validateWebhookConfig();
+
     return Response.json({
       status: "active",
       configured: configValidation.isValid,
@@ -89,7 +95,7 @@ export async function GET() {
   } catch (error) {
     console.error("Webhook health check error:", error);
     return Response.json(
-      { error: 'INTERNAL_ERROR', message: "Failed to get webhook status" },
+      { error: "INTERNAL_ERROR", message: "Failed to get webhook status" },
       { status: 500 }
     );
   }
@@ -100,13 +106,18 @@ export async function GET() {
  */
 function handleMethodNotAllowed(allowedMethods: string[]): Response {
   const response = Response.json(
-    { error: 'METHOD_NOT_ALLOWED', message: `Method not allowed. Allowed methods: ${allowedMethods.join(', ')}` },
+    {
+      error: "METHOD_NOT_ALLOWED",
+      message: `Method not allowed. Allowed methods: ${allowedMethods.join(
+        ", "
+      )}`,
+    },
     { status: 405 }
   );
-  response.headers.set('Allow', allowedMethods.join(', '));
+  response.headers.set("Allow", allowedMethods.join(", "));
   return response;
 }
 
-export const PUT = () => handleMethodNotAllowed(['POST', 'GET']);
-export const DELETE = () => handleMethodNotAllowed(['POST', 'GET']);
-export const PATCH = () => handleMethodNotAllowed(['POST', 'GET']);
+export const PUT = () => handleMethodNotAllowed(["POST", "GET"]);
+export const DELETE = () => handleMethodNotAllowed(["POST", "GET"]);
+export const PATCH = () => handleMethodNotAllowed(["POST", "GET"]);

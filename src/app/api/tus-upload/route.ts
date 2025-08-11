@@ -1,10 +1,14 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-
-import * as videoService from "@/services/VideoService";
-import * as uploadService from "@/services/UploadService";
+import { createVideo } from "@/services/VideoService";
+import {
+  parseTusMetadata,
+  validateFileType,
+  createTusResponseHeaders,
+} from "@/services/UploadService";
 import { tusMetadataSchema } from "@/zod/upload";
 import { MAX_FILE_SIZE } from "@/lib/constants/upload";
+import type { TusMetadata } from "@/types";
 
 // TUS headers validation schema
 const tusHeadersSchema = z.object({
@@ -56,10 +60,10 @@ export async function POST(req: NextRequest) {
     } = headerValidation.data;
 
     // 2. Parse and validate metadata
-    let tusMetadata: uploadService.TusMetadata;
+    let tusMetadata: TusMetadata;
 
     try {
-      tusMetadata = uploadService.parseTusMetadata(uploadMetadata);
+      tusMetadata = parseTusMetadata(uploadMetadata);
     } catch (error) {
       console.error("Metadata parsing error:", error);
       return Response.json(
@@ -82,7 +86,7 @@ export async function POST(req: NextRequest) {
       description: tusMetadata.description,
       chapters: tusMetadata.chapters,
     };
-    
+
     const metadataValidation = tusMetadataSchema.safeParse(validationInput);
 
     if (!metadataValidation.success) {
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest) {
     // 4. Validate file type if provided
     if (tusMetadata.filetype) {
       try {
-        uploadService.validateFileType(tusMetadata.filetype);
+        validateFileType(tusMetadata.filetype);
       } catch (error) {
         return Response.json(
           {
@@ -114,7 +118,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Create video with upload session
-    const { video, uploadSession } = await videoService.createVideo({
+    const { video, uploadSession } = await createVideo({
       title: tusMetadata.name,
       description: tusMetadata.description,
       uploadLength,
@@ -127,7 +131,7 @@ export async function POST(req: NextRequest) {
     );
 
     // 6. Create response headers
-    const responseHeaders = uploadService.createTusResponseHeaders({
+    const responseHeaders = createTusResponseHeaders({
       Location: `/api/tus-upload/${uploadSession.streamMediaId}`,
       "Upload-Offset": "0",
     });

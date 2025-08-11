@@ -1,10 +1,13 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { Video, Home, Upload, PlayCircle } from 'lucide-react';
-import Link from 'next/link';
-import VideoGrid from '@/components/video/VideoGrid';
-import type { VideoRecord } from '@/repositories/VideoRepository';
-import type { VideoListResponse, VideoErrorResponse } from '@/types/api/video-streaming';
+import React, { useState, useEffect } from "react";
+import { Video, Home, Upload, PlayCircle } from "lucide-react";
+import Link from "next/link";
+import VideoGrid from "@/components/video/VideoGrid";
+import type {
+  VideoListResponse,
+  VideoErrorResponse,
+  VideoRecord,
+} from "@/types";
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<VideoRecord[]>([]);
@@ -21,10 +24,10 @@ export default function VideosPage() {
       setError(null);
 
       const response = await fetch(`/api/videos?page=${pageNum}&limit=12`);
-      
+
       if (!response.ok) {
         const errorData: VideoErrorResponse = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch videos');
+        throw new Error(errorData.message || "Failed to fetch videos");
       }
 
       const data: VideoListResponse = await response.json();
@@ -32,15 +35,14 @@ export default function VideosPage() {
       if (reset) {
         setVideos(data.videos);
       } else {
-        setVideos(prev => [...prev, ...data.videos]);
+        setVideos((prev) => [...prev, ...data.videos]);
       }
 
       setHasMore(data.pagination.hasMore);
       setTotal(data.pagination.total);
       setPage(pageNum);
-
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load videos');
+      setError(err instanceof Error ? err.message : "Failed to load videos");
     } finally {
       setLoading(false);
     }
@@ -105,14 +107,15 @@ export default function VideosPage() {
             </span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Discover and watch educational content from our growing library of videos.
+            Discover and watch educational content from our growing library of
+            videos.
           </p>
-          
+
           {/* Stats */}
           {total > 0 && !loading && (
             <div className="mt-6 text-gray-500">
               <span className="bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-gray-200">
-                {total} video{total !== 1 ? 's' : ''} available
+                {total} video{total !== 1 ? "s" : ""} available
               </span>
             </div>
           )}
@@ -132,7 +135,9 @@ export default function VideosPage() {
           <div className="text-center py-12">
             <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 max-w-md mx-auto border border-gray-200">
               <PlayCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-gray-800 font-semibold mb-2">No Videos Yet</h3>
+              <h3 className="text-gray-800 font-semibold mb-2">
+                No Videos Yet
+              </h3>
               <p className="text-gray-600 text-sm mb-4">
                 Be the first to upload educational content to our platform!
               </p>

@@ -26,9 +26,16 @@ function isProduction(): boolean {
 }
 
 function getCorsAllowedOrigins(): string[] {
-  return isProduction() 
-    ? ['https://your-domain.com'] // Replace with actual production domains
-    : ['*']; // Allow all origins in development
+  if (isProduction()) {
+    // In production, use environment variable for allowed origins
+    const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS;
+    if (allowedOrigins) {
+      return allowedOrigins.split(',').map(origin => origin.trim());
+    }
+    // Fallback to current host if no specific origins configured
+    return ['https://your-domain.com']; // This should be replaced with actual domain
+  }
+  return ['*']; // Allow all origins in development
 }
 
 function getClientIdentifier(request: Request): string {
@@ -42,6 +49,9 @@ function getClientIdentifier(request: Request): string {
 function isRateLimited(clientId: string): RateLimitResult {
   const now = Date.now();
   const key = `ratelimit:${clientId}`;
+  
+  // Clean up expired entries periodically to prevent memory leaks
+  cleanupExpiredRateLimitEntries(now);
   
   let data = rateLimitStore.get(key);
   
@@ -65,15 +75,39 @@ function isRateLimited(clientId: string): RateLimitResult {
   };
 }
 
-function createCorsHeaders(): Record<string, string> {
+// Cleanup function to prevent memory leaks
+function cleanupExpiredRateLimitEntries(now: number): void {
+  // Only cleanup every 100 requests to avoid performance impact
+  if (Math.random() > 0.01) return;
+  
+  for (const [key, data] of rateLimitStore.entries()) {
+    if (now >= data.resetTime) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
+
+function createCorsHeaders(requestOrigin?: string | null): Record<string, string> {
   const allowedOrigins = getCorsAllowedOrigins();
   
+  // Determine the correct origin to set in the response
+  let allowOrigin = '*';
+  if (!allowedOrigins.includes('*')) {
+    // If we have specific allowed origins, only allow the requesting origin if it's in the list
+    if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+      allowOrigin = requestOrigin;
+    } else {
+      // If the requesting origin is not allowed, set to the first allowed origin
+      allowOrigin = allowedOrigins[0] || '*';
+    }
+  }
+  
   return {
-    'Access-Control-Allow-Origin': allowedOrigins.includes('*') ? '*' : allowedOrigins.join(','),
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': CORS_ALLOWED_METHODS.join(','),
     'Access-Control-Allow-Headers': CORS_ALLOWED_HEADERS.join(','),
     'Access-Control-Expose-Headers': CORS_EXPOSED_HEADERS.join(','),
-    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Credentials': allowOrigin !== '*' ? 'true' : 'false',
   };
 }
 
@@ -105,7 +139,7 @@ export function middleware(request: NextRequest) {
     
     // Handle preflight requests
     if (method === 'OPTIONS') {
-      const corsHeaders = createCorsHeaders();
+      const corsHeaders = createCorsHeaders(requestOrigin);
       return new Response(null, { status: 200, headers: corsHeaders });
     }
 
@@ -207,7 +241,7 @@ export function middleware(request: NextRequest) {
     const response = NextResponse.next();
 
     // Add CORS headers to all responses
-    const corsHeaders = createCorsHeaders();
+    const corsHeaders = createCorsHeaders(requestOrigin);
     Object.entries(corsHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
@@ -241,9 +275,7 @@ export function middleware(request: NextRequest) {
  */
 export const config = {
   matcher: [
-    // Match all API routes
+    // Match only API routes to avoid interfering with Next.js internals
     '/api/:path*',
-    // Exclude static files and assets
-    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

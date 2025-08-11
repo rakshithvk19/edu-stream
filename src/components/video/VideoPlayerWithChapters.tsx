@@ -1,28 +1,24 @@
 "use client";
-import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import videojs from 'video.js';
-import VideoPlayer from './VideoPlayer';
-import type { VideoPlayerProps, VideoPlayerRef } from '@/types/components/video-player';
-import type { Chapter } from '@/lib/utils/chapters';
+import React, {
+  useRef,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+  useCallback,
+} from "react";
+import VideoPlayer from "./VideoPlayer";
+import type {
+  VideoPlayerWithChaptersProps,
+  VideoPlayerRef,
+  VideoPlayerWithChaptersRef,
+  Chapter,
+} from "@/types";
+import type Player from "video.js/dist/types/player";
 
-interface VideoPlayerWithChaptersProps extends VideoPlayerProps {
-  chapters?: Chapter[];
-  onChapterChange?: (chapter: Chapter | null) => void;
-  videoDuration?: number;
-}
-
-interface VideoPlayerWithChaptersRef extends VideoPlayerRef {
-  seekToChapter: (chapter: Chapter) => void;
-  seekToTime: (seconds: number) => void;
-}
-
-const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlayerWithChaptersProps>(({
-  chapters = [],
-  onChapterChange: _onChapterChange,
-  videoDuration,
-  onReady,
-  ...videoPlayerProps
-}, ref) => {
+const VideoPlayerWithChapters = forwardRef<
+  VideoPlayerWithChaptersRef,
+  VideoPlayerWithChaptersProps
+>(({ chapters = [], videoDuration, onReady, ...videoPlayerProps }, ref) => {
   const videoPlayerRef = useRef<VideoPlayerRef>(null);
   const markersAddedRef = useRef(false);
 
@@ -47,28 +43,35 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
   }));
 
   // Add chapter markers to Video.js progress bar
-  const addChapterMarkers = (player: videojs.Player) => {
-    if (!chapters.length || !videoDuration || markersAddedRef.current) return;
+  const addChapterMarkers = useCallback(
+    (player: Player) => {
+      if (!chapters.length || !videoDuration || markersAddedRef.current) return;
 
-    try {
-      const progressControl = player.controlBar?.progressControl;
-      if (!progressControl) return;
+      try {
+        const progressControl = player
+          .getChild("controlBar")
+          ?.getChild("progressControl");
+        if (!progressControl) return;
 
-      const seekBar = progressControl.seekBar;
-      if (!seekBar) return;
+        const seekBar =
+          progressControl.getChild && progressControl.getChild("seekBar");
 
-      // Remove existing markers
-      const existingMarkers = seekBar.el().querySelectorAll('.chapter-marker');
-      existingMarkers.forEach((marker: Element) => marker.remove());
+        if (!seekBar) return;
 
-      // Add new markers
-      chapters.forEach((chapter) => {
-        const position = (chapter.start_seconds / videoDuration) * 100;
-        
-        // Create marker element
-        const marker = document.createElement('div');
-        marker.className = 'chapter-marker';
-        marker.style.cssText = `
+        // Remove existing markers
+        const existingMarkers = seekBar
+          .el()
+          .querySelectorAll(".chapter-marker");
+        existingMarkers.forEach((marker: Element) => marker.remove());
+
+        // Add new markers
+        chapters.forEach((chapter) => {
+          const position = (chapter.start_seconds / videoDuration) * 100;
+
+          // Create marker element
+          const marker = document.createElement("div");
+          marker.className = "chapter-marker";
+          marker.style.cssText = `
           position: absolute;
           left: ${position}%;
           top: 50%;
@@ -84,16 +87,16 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
           box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         `;
 
-        // Hover effects
-        marker.addEventListener('mouseenter', () => {
-          marker.style.transform = 'translate(-50%, -50%) scale(1.2)';
-          marker.style.backgroundColor = '#1d4ed8';
-          
-          // Create tooltip
-          const tooltip = document.createElement('div');
-          tooltip.className = 'chapter-tooltip';
-          tooltip.innerHTML = `${chapter.timestamp} - ${chapter.title}`;
-          tooltip.style.cssText = `
+          // Hover effects
+          marker.addEventListener("mouseenter", () => {
+            marker.style.transform = "translate(-50%, -50%) scale(1.2)";
+            marker.style.backgroundColor = "#1d4ed8";
+
+            // Create tooltip
+            const tooltip = document.createElement("div");
+            tooltip.className = "chapter-tooltip";
+            tooltip.innerHTML = `${chapter.timestamp} - ${chapter.title}`;
+            tooltip.style.cssText = `
             position: absolute;
             bottom: 125%;
             left: 50%;
@@ -110,10 +113,10 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
             text-overflow: ellipsis;
             overflow: hidden;
           `;
-          
-          // Add arrow
-          const arrow = document.createElement('div');
-          arrow.style.cssText = `
+
+            // Add arrow
+            const arrow = document.createElement("div");
+            arrow.style.cssText = `
             position: absolute;
             top: 100%;
             left: 50%;
@@ -124,43 +127,45 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
             border-right: 5px solid transparent;
             border-top: 5px solid rgba(0, 0, 0, 0.9);
           `;
-          tooltip.appendChild(arrow);
-          
-          marker.appendChild(tooltip);
+            tooltip.appendChild(arrow);
+
+            marker.appendChild(tooltip);
+          });
+
+          marker.addEventListener("mouseleave", () => {
+            marker.style.transform = "translate(-50%, -50%) scale(1)";
+            marker.style.backgroundColor = "#2563eb";
+
+            // Remove tooltip
+            const tooltip = marker.querySelector(".chapter-tooltip");
+            if (tooltip) {
+              tooltip.remove();
+            }
+          });
+
+          // Click to jump to chapter
+          marker.addEventListener("click", (e) => {
+            e.stopPropagation();
+            player.currentTime(chapter.start_seconds);
+            if (player.paused()) {
+              player.play();
+            }
+          });
+
+          // Add marker to seek bar
+          seekBar.el().appendChild(marker);
         });
 
-        marker.addEventListener('mouseleave', () => {
-          marker.style.transform = 'translate(-50%, -50%) scale(1)';
-          marker.style.backgroundColor = '#2563eb';
-          
-          // Remove tooltip
-          const tooltip = marker.querySelector('.chapter-tooltip');
-          if (tooltip) {
-            tooltip.remove();
-          }
-        });
-
-        // Click to jump to chapter
-        marker.addEventListener('click', (e) => {
-          e.stopPropagation();
-          player.currentTime(chapter.start_seconds);
-          if (player.paused()) {
-            player.play();
-          }
-        });
-
-        // Add marker to seek bar
-        seekBar.el().appendChild(marker);
-      });
-
-      markersAddedRef.current = true;
-    } catch (error) {
-      console.error('Failed to add chapter markers:', error);
-    }
-  };
+        markersAddedRef.current = true;
+      } catch (error) {
+        console.error("Failed to add chapter markers:", error);
+      }
+    },
+    [chapters, videoDuration]
+  );
 
   // Handle player ready event
-  const handlePlayerReady = (player: videojs.Player) => {
+  const handlePlayerReady = (player: Player) => {
     // Add chapter markers once player is ready and we have duration
     if (chapters.length > 0 && videoDuration) {
       // Small delay to ensure DOM is ready
@@ -174,7 +179,12 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
   // Re-add markers when chapters or duration change
   useEffect(() => {
     const player = videoPlayerRef.current?.player;
-    if (player && !player.isDisposed() && chapters.length > 0 && videoDuration) {
+    if (
+      player &&
+      !player.isDisposed() &&
+      chapters.length > 0 &&
+      videoDuration
+    ) {
       markersAddedRef.current = false;
       addChapterMarkers(player);
     }
@@ -189,7 +199,7 @@ const VideoPlayerWithChapters = forwardRef<VideoPlayerWithChaptersRef, VideoPlay
   );
 });
 
-VideoPlayerWithChapters.displayName = 'VideoPlayerWithChapters';
+VideoPlayerWithChapters.displayName = "VideoPlayerWithChapters";
 
 export default VideoPlayerWithChapters;
 export type { VideoPlayerWithChaptersRef };

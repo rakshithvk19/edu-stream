@@ -1,55 +1,50 @@
 "use client";
-import React, { useEffect, useRef } from 'react';
-import { X, Play, Clock } from 'lucide-react';
-import type { Chapter } from '@/lib/utils/chapters';
+import React, { useEffect, useRef } from "react";
+import { X, Play, Clock } from "lucide-react";
+import type { ChaptersBottomSheetProps } from "@/types";
 
-interface ChaptersBottomSheetProps {
-  chapters: Chapter[];
-  isOpen: boolean;
-  onClose: () => void;
-  onChapterClick: (chapter: Chapter) => void;
-  className?: string;
-}
-
-export default function ChaptersBottomSheet({ 
-  chapters, 
-  isOpen, 
-  onClose, 
-  onChapterClick, 
-  className = '' 
+export default function ChaptersBottomSheet({
+  chapters,
+  isOpen,
+  onClose,
+  onChapterClick,
+  className = "",
 }: ChaptersBottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
 
   // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (sheetRef.current && !sheetRef.current.contains(event.target as Node)) {
+      if (
+        sheetRef.current &&
+        !sheetRef.current.contains(event.target as Node)
+      ) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
       // Prevent body scroll when sheet is open
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.body.style.overflow = '';
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.body.style.overflow = "";
     };
   }, [isOpen, onClose]);
 
   // Handle escape key
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === "Escape" && isOpen) {
         onClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -57,19 +52,21 @@ export default function ChaptersBottomSheet({
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300"
         onClick={onClose}
       />
 
       {/* Bottom Sheet */}
-      <div 
+      <div
         ref={sheetRef}
         className={`fixed bottom-0 left-0 right-0 h-1/4 bg-white/90 backdrop-blur-md border-t border-gray-200 rounded-t-2xl shadow-2xl z-50 transform transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-y-0' : 'translate-y-full'
+          isOpen ? "translate-y-0" : "translate-y-full"
         } ${className}`}
         style={{
-          animation: isOpen ? 'slideUp 0.3s ease-out' : 'slideDown 0.3s ease-out'
+          animation: isOpen
+            ? "slideUp 0.3s ease-out"
+            : "slideDown 0.3s ease-out",
         }}
       >
         {/* Handle Bar */}
@@ -81,9 +78,7 @@ export default function ChaptersBottomSheet({
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200">
           <div className="flex items-center">
             <Clock className="w-5 h-5 text-blue-600 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-900">
-              Chapters
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900">Chapters</h3>
             <span className="ml-2 text-sm text-gray-500">
               ({chapters.length})
             </span>
@@ -144,7 +139,7 @@ export default function ChaptersBottomSheet({
             transform: translateY(0);
           }
         }
-        
+
         @keyframes slideDown {
           from {
             transform: translateY(0);

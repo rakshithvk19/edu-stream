@@ -1,5 +1,4 @@
-import type { FieldError } from 'react-hook-form';
-import type { Chapter, ChapterValidationError } from '@/lib/utils/chapters';
+import type { FieldError } from "react-hook-form";
 
 // Component prop types for chapter input
 export interface ChapterInputProps {
@@ -34,4 +33,31 @@ export interface ChaptersBottomSheetProps {
   onClose: () => void;
   onChapterClick: (chapter: Chapter) => void;
   className?: string;
+}
+
+export interface ChaptersSidebarProps {
+  chapters: Chapter[];
+  currentTime?: number;
+  onChapterClick: (chapter: Chapter) => void;
+  className?: string;
+}
+
+export interface ChaptersBottomSheetProps {
+  chapters: Chapter[];
+  isOpen: boolean;
+  onClose: () => void;
+  onChapterClick: (chapter: Chapter) => void;
+  className?: string;
+}
+
+export interface Chapter {
+  title: string;
+  timestamp: string;
+  start_seconds: number;
+}
+
+export interface ChapterValidationError {
+  line: number;
+  error: string;
+  rawLine: string;
 }
