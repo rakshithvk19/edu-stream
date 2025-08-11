@@ -1,11 +1,13 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import {
-  handleVideoStatusUpdate,
   updateVideoProcessingResults,
+  handleVideoStatusUpdate,
 } from "./VideoService";
-import type { CloudflareStreamWebhookPayload } from "@/types/api/webhook";
-import type { VideoStatus } from "@/types/enum";
-import type { WebhookProcessingResult } from "@/types";
+import type {
+  WebhookProcessingResult,
+  VideoStatus,
+  CloudflareStreamWebhookPayload,
+} from "@/types";
 
 /**
  * Verify webhook signature (if secret is configured)

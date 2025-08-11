@@ -7,9 +7,7 @@ import type { VideoDetailsResponse, VideoErrorResponse } from "@/types";
  */
 export async function GET(
   request: NextRequest,
-  params: Promise<{
-    cloudflare_video_id: string;
-  }>
+  { params }: { params: Promise<{ cloudflare_video_id: string }> }
 ) {
   try {
     const { cloudflare_video_id } = await params;

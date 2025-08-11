@@ -1,8 +1,8 @@
-import type { VideoRecord } from "@/types/repositories/videoRepository";
 import type {
   VideoStreamingResponse,
   VideoStreamUrlsResponse,
-} from "@/types/api/video-streaming";
+  VideoRecord,
+} from "@/types";
 
 /**
  * Build Cloudflare Stream HLS manifest URL
