@@ -135,7 +135,13 @@ async function handleVideoStatusChange(
   const { uid, status, duration, size } = video;
   const state = status.state;
 
-  console.log(`Processing video ${uid} with status: ${state}`);
+  console.log("🔔 [WEBHOOK] Processing video status change:", {
+    uid,
+    state,
+    pctComplete: status.pctComplete,
+    errorReasonCode: status.errorReasonCode,
+    errorReasonText: status.errorReasonText
+  });
 
   // Map Cloudflare states to our video statuses
   const statusMap: Record<string, VideoStatus> = {

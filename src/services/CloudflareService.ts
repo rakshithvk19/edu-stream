@@ -11,30 +11,70 @@ import type {
 export async function createCloudflareUploadSession(
   data: CreateUploadSessionData
 ): Promise<CloudflareUploadSession> {
+  console.log("🟡 [CLOUDFLARE] createCloudflareUploadSession called with data:", {
+    title: data.title,
+    hasDescription: !!data.description,
+    uploadLength: data.uploadLength,
+    tusResumable: data.tusResumable
+  });
+  
   // Validate configuration before making API calls
+  console.log("🟡 [CLOUDFLARE] Validating Cloudflare config...");
   validateCloudflareConfig();
+  console.log("🟡 [CLOUDFLARE] ✅ Config validation passed");
 
   const uploadMetadata = buildUploadMetadata({
     name: data.title,
     description: data.description || "",
     maxDurationSeconds: MAX_DURATION_SECONDS.toString(),
   });
+  
+  console.log("🟡 [CLOUDFLARE] Upload metadata built:", uploadMetadata.substring(0, 100) + "...");
 
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
-        "Tus-Resumable": data.tusResumable,
-        "Upload-Length": data.uploadLength.toString(),
-        "Upload-Metadata": uploadMetadata,
-      },
-    }
-  );
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  
+  console.log("🟡 [CLOUDFLARE] Environment variables check:", {
+    hasAccountId: !!accountId,
+    accountIdLength: accountId?.length,
+    accountIdPreview: accountId ? accountId.substring(0, 8) + "..." : "MISSING",
+    hasApiToken: !!apiToken,
+    apiTokenLength: apiToken?.length,
+    apiTokenPreview: apiToken ? apiToken.substring(0, 10) + "..." : "MISSING"
+  });
+  
+  const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream?direct_user=true`;
+  console.log("🟡 [CLOUDFLARE] Making POST request to:", apiUrl);
+  console.log("🟡 [CLOUDFLARE] Request headers:", {
+    Authorization: apiToken ? `Bearer ${apiToken.substring(0, 20)}...` : "MISSING",
+    "Tus-Resumable": data.tusResumable,
+    "Upload-Length": data.uploadLength.toString(),
+    "Upload-Metadata": uploadMetadata.substring(0, 50) + "..."
+  });
+  
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Tus-Resumable": data.tusResumable,
+      "Upload-Length": data.uploadLength.toString(),
+      "Upload-Metadata": uploadMetadata,
+    },
+  });
+  
+  console.log("🟡 [CLOUDFLARE] Response received:", {
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error("🔴 [CLOUDFLARE] API request failed:", {
+      status: response.status,
+      statusText: response.statusText,
+      errorBody: errorText
+    });
     throw new Error(
       `Cloudflare Stream API error (${response.status}): ${errorText}`
     );
@@ -42,8 +82,16 @@ export async function createCloudflareUploadSession(
 
   const locationHeader = response.headers.get("Location");
   const streamMediaId = response.headers.get("stream-media-id");
+  
+  console.log("🟡 [CLOUDFLARE] ✅ Success! Response headers:", {
+    hasLocation: !!locationHeader,
+    location: locationHeader,
+    hasStreamMediaId: !!streamMediaId,
+    streamMediaId: streamMediaId
+  });
 
   if (!locationHeader || !streamMediaId) {
+    console.error("🔴 [CLOUDFLARE] Missing required response headers");
     throw new Error("Missing required headers from Cloudflare Stream response");
   }
 

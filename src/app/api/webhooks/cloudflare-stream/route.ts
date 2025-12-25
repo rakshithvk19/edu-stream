@@ -10,9 +10,13 @@ import {
  * POST - Handle Cloudflare Stream webhooks
  */
 export async function POST(req: NextRequest) {
+  console.log("🔔 [WEBHOOK] POST request received from Cloudflare Stream");
+  
   try {
     // 1. Get raw body for signature verification
     const rawBody = await req.text();
+    console.log("🔔 [WEBHOOK] Raw body length:", rawBody.length);
+    console.log("🔔 [WEBHOOK] Raw body preview:", rawBody.substring(0, 200));
 
     // 2. Verify webhook signature if configured
     const signature = req.headers.get("cf-webhook-signature");
