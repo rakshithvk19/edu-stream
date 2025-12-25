@@ -264,6 +264,7 @@ export async function forwardTusRequest(
   const requestOptions: RequestInit = {
     method,
     headers,
+    signal: AbortSignal.timeout(60000),
   };
 
   if (body && (method === "PATCH" || method === "POST")) {

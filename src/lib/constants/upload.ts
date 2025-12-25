@@ -2,7 +2,7 @@
 export const MAX_FILE_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
 export const MAX_TITLE_LENGTH = 255;
 export const MAX_DESCRIPTION_LENGTH = 1000;
-export const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB
+export const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
 export const MAX_DURATION_SECONDS = 3600; // 1 hour
 
 // TUS Protocol constants

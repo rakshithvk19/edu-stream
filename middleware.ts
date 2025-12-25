@@ -260,7 +260,6 @@ export function middleware(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('Middleware error:', error);
     
     // Return a generic error response
     return NextResponse.json(

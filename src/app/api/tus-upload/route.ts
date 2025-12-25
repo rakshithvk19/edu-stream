@@ -32,7 +32,6 @@ export async function OPTIONS() {
  * POST - Initialize TUS upload session with validation
  */
 export async function POST(req: NextRequest) {
-  console.log("🟠 [TUS API] POST /api/tus-upload - Request received");
   
   try {
     // 1. Validate TUS headers
@@ -42,17 +41,10 @@ export async function POST(req: NextRequest) {
       "upload-metadata": req.headers.get("Upload-Metadata"),
     };
     
-    console.log("🟠 [TUS API] Raw headers received:", {
-      hasUploadLength: !!rawHeaders["upload-length"],
-      uploadLength: rawHeaders["upload-length"],
-      tusResumable: rawHeaders["tus-resumable"],
-      hasMetadata: !!rawHeaders["upload-metadata"]
-    });
 
-    console.log("🟠 [TUS API] Validating TUS headers...");
+
     const headerValidation = tusHeadersSchema.safeParse(rawHeaders);
     if (!headerValidation.success) {
-      console.error("🔴 [TUS API] Invalid TUS headers:", headerValidation.error.issues);
       return Response.json(
         {
           error: "VALIDATION_ERROR",

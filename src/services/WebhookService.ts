@@ -62,20 +62,22 @@ export function parseWebhookPayload(
   try {
     const payload = JSON.parse(rawPayload);
 
-    // Basic validation of required fields
-    if (!payload.eventType) {
-      throw new Error("Missing eventType in webhook payload");
+    // Cloudflare sends the video object directly, not wrapped with eventType
+    // Validate the video object structure
+    if (!payload.uid) {
+      throw new Error("Missing uid in webhook payload");
     }
 
-    if (!payload.video || !payload.video.uid) {
-      throw new Error("Missing video.uid in webhook payload");
+    if (!payload.status || !payload.status.state) {
+      throw new Error("Missing status.state in webhook payload");
     }
 
-    if (!payload.video.status || !payload.video.status.state) {
-      throw new Error("Missing video.status.state in webhook payload");
-    }
-
-    return payload;
+    // Transform to match our expected structure
+    return {
+      eventType: `video.${payload.status.state}`, // Derive eventType from status
+      video: payload,
+      eventTimestamp: payload.modified || new Date().toISOString()
+    };
   } catch (error) {
     throw new Error(
       `Invalid webhook payload: ${
@@ -97,21 +99,7 @@ export async function processWebhook(
   console.log(`Processing webhook: ${eventType} for video ${videoId}`);
 
   try {
-    switch (eventType) {
-      case "video.live_input.disconnected":
-      case "video.live_input.connected":
-        // Handle live input events (not applicable for this use case)
-        console.log(`Live input event: ${eventType} for video ${videoId}`);
-        return {
-          success: true,
-          videoId,
-          action: "live_input_event_ignored",
-        };
-
-      default:
-        // Handle video state changes
-        return await handleVideoStatusChange(video);
-    }
+    return await handleVideoStatusChange(video);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

@@ -252,20 +252,15 @@ export async function handleTusPatchRequest(
   } catch (error) {
     console.error(`TUS PATCH error for session ${sessionId}:`, error);
 
-    // Mark upload as failed
-    try {
-      await markUploadFailed(
-        session.videoId,
-        error instanceof Error ? error.message : "Unknown error"
-      );
-    } catch (dbError) {
-      console.error(`Failed to mark upload failed for ${sessionId}:`, dbError);
-    }
-
+    // ✅ FIX: Don't mark as failed - TUS client will retry
+    // Socket errors are transient and retries usually succeed
+    // Only log the error, don't update database status
+    
+    // REMOVED: await markUploadFailed(...)
+    
     return new Response(null, { status: 500 });
   }
 }
-
 /**
  * Get upload progress information
  */
