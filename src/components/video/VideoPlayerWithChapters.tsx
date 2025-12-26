@@ -157,7 +157,9 @@ const VideoPlayerWithChapters = forwardRef<
         });
 
         markersAddedRef.current = true;
-      } catch (_error) {
+      } catch (error) {
+        console.warn("Failed to add chapter markers:", error);
+
         // Failed to add chapter markers - silently fail
       }
     },

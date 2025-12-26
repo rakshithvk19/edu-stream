@@ -82,9 +82,7 @@ export default function VideoUploadForm({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const tusUploadRef = useRef<TusUpload | null>(null);
 
-  const {
-    ref: fileRef,
-  } = register("file");
+  const { ref: fileRef } = register("file");
 
   // Custom onChange handler that transforms FileList to File
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,7 +325,9 @@ export default function VideoUploadForm({
           {errors.file && (
             <p className="text-red-500 text-sm flex items-center">
               <AlertCircle className="w-4 h-4 mr-1" />
-              {errors.file.message}
+              {typeof errors.file.message === "string"
+                ? errors.file.message
+                : "Invalid file"}
             </p>
           )}
         </div>

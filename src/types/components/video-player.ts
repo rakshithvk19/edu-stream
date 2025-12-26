@@ -1,4 +1,4 @@
-import type { Chapter } from "@/lib/utils/chapters";
+import type { Chapter } from "@/types";
 import type Player from "video.js/dist/types/player";
 
 export interface VideoPlayerProps {
@@ -68,5 +68,3 @@ export interface VideoPlayerWithChaptersRef extends VideoPlayerRef {
   seekToChapter: (chapter: Chapter) => void;
   seekToTime: (seconds: number) => void;
 }
-
-

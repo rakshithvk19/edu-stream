@@ -1,4 +1,4 @@
-import type { VideoRecord } from '@/repositories/VideoRepository';
+import type { VideoRecord } from "@/types/repositories/videoRepository";
 
 export interface VideoCardProps {
   video: VideoRecord;

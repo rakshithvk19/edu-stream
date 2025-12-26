@@ -3,7 +3,6 @@ import React from "react";
 import { Search } from "lucide-react";
 import VideoCard from "./VideoCard";
 import type {
-  VideoRecord,
   VideoGridProps,
   VideoGridSkeletonProps,
   VideoSearchProps,
@@ -76,11 +75,6 @@ export default function VideoGrid({
   onLoadMore,
   className = "",
 }: VideoGridProps) {
-  // Handle video card click
-  const handleVideoClick = (_video: VideoRecord) => {
-    // Navigation is handled by Link component in VideoCard
-  };
-
   // Error state
   if (error) {
     return (
@@ -139,7 +133,7 @@ export default function VideoGrid({
       {/* Video grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {videos.map((video) => (
-          <VideoCard key={video.id} video={video} onClick={handleVideoClick} />
+          <VideoCard key={video.id} video={video} />
         ))}
       </div>
 

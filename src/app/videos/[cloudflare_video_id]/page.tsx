@@ -119,7 +119,8 @@ export default function VideoPlayerPage() {
             } else {
               setChapters([]);
             }
-          } catch (_chapterError) {
+          } catch (chapterError) {
+            console.warn("Invalid chapters format in video metadata", chapterError);
             setChapters([]);
           }
         } else {
@@ -225,7 +226,8 @@ export default function VideoPlayerPage() {
           text: video.description || `Watch "${video.title}" on EduStream`,
           url: window.location.href,
         });
-      } catch (_err) {
+      } catch (err) {
+        console.error("Error sharing the video", err);
         // Silent error - share functionality is optional
       }
     } else {

@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
       action: result.action,
       videoId: result.videoId,
     });
-  } catch (_error) {
+  } catch (error) {
+    console.error("Cloudflare Stream webhook processing failed:", error);
     return Response.json(
       { error: "INTERNAL_ERROR", message: "Failed to process webhook" },
       { status: 500 }

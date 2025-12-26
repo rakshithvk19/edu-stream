@@ -195,8 +195,8 @@ export async function handleTusPatchRequest(
         // Mark upload as completed
         try {
           await markUploadCompleted(session.videoId);
-        } catch (_error) {
-          // Failed to mark upload completed - non-critical
+        } catch (error) {
+          console.log("Failed to mark upload completed:", error);
         }
       }
     }
@@ -205,10 +205,9 @@ export async function handleTusPatchRequest(
       status: response.status,
       headers,
     });
-  } catch (_error) {
-    // Don't mark as failed - TUS client will retry
-    // Socket errors are transient and retries usually succeed
-    
+  } catch (error) {
+    console.error("TUS upload chunk failed:", error);
+
     return new Response(null, { status: 500 });
   }
 }
