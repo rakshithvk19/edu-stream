@@ -74,20 +74,6 @@ export default function VideoUploadForm({
   const watchedFile = watch("file");
   const watchedChapters = watch("chapters");
 
-  // Add this useEffect to watch form state changes
-  React.useEffect(() => {
-    console.log("🟢 [FORM STATE] Form state changed:", {
-      hasFile: !!watchedFile,
-      fileName: watchedFile?.name,
-      fileSize: watchedFile?.size,
-      fileType: watchedFile?.type,
-      isFileInstance: watchedFile instanceof File,
-      isValid: isValid,
-      errors: errors,
-      fileError: errors.file?.message,
-    });
-  }, [watchedFile, isValid, errors]);
-
   // Upload state
   const [progress, setProgress] = useState(0);
   const [success, setSuccess] = useState(false);
@@ -104,43 +90,17 @@ export default function VideoUploadForm({
 
   // Custom onChange handler that transforms FileList to File
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("🔵 [FILE SELECT] Event triggered");
     const file = e.target.files?.[0];
-
-    console.log("🔵 [FILE SELECT] File from input:", {
-      exists: !!file,
-      name: file?.name,
-      size: file?.size,
-      type: file?.type,
-      isFileInstance: file instanceof File,
-      constructor: file?.constructor?.name,
-      fileListLength: e.target.files?.length,
-    });
 
     // CRITICAL: Set the File object directly, NOT the FileList
     if (file) {
-      console.log(
-        "🔵 [FILE SELECT] Setting File object (not FileList) via setValue"
-      );
       // setValue with all flags to trigger proper validation
       setValue("file", file, {
         shouldValidate: true,
         shouldDirty: true,
         shouldTouch: true,
       });
-
-      // Verify what was set
-      setTimeout(() => {
-        const currentValue = watch("file");
-        console.log("🔵 [FILE SELECT] Value after setValue:", {
-          exists: !!currentValue,
-          name: currentValue?.name,
-          isFileInstance: currentValue instanceof File,
-          isFileList: currentValue instanceof FileList,
-        });
-      }, 0);
     } else {
-      console.log("🔵 [FILE SELECT] No file selected, clearing");
       setValue("file", undefined, { shouldValidate: true });
     }
   };
@@ -161,30 +121,12 @@ export default function VideoUploadForm({
 
   // Upload functions
   const handleUpload = async () => {
-    console.log("🔴 [UPLOAD CLICK] Upload button clicked");
-    console.log("🔴 [UPLOAD CLICK] Form validation state:", {
-      isValid: isValid,
-      hasWatchedFile: !!watchedFile,
-      watchedFileName: watchedFile?.name,
-      isFileInstance: watchedFile instanceof File,
-      allFormValues: watch(),
-      allErrors: errors,
-    });
-
     if (!isValid || !watchedFile) {
-      console.log("🔴 [UPLOAD CLICK] ❌ Validation failed:", {
-        isValid,
-        hasWatchedFile: !!watchedFile,
-        reason: !isValid ? "Form not valid" : "No file",
-      });
-
       const errorMessage = "Please fill in all required fields correctly";
       setUploadError(errorMessage);
       onUploadError?.(errorMessage);
       return;
     }
-
-    console.log("🔴 [UPLOAD CLICK] ✅ Validation passed, starting upload");
 
     setIsUploading(true);
     setUploadError(null);
@@ -192,7 +134,6 @@ export default function VideoUploadForm({
     try {
       await startTusUpload(watchedFile);
     } catch (err: unknown) {
-      console.log("🔴 [UPLOAD CLICK] ❌ Upload error:", err);
       setIsUploading(false);
       const errorMessage =
         err instanceof Error ? err.message : "An unknown error occurred.";
@@ -216,7 +157,6 @@ export default function VideoUploadForm({
         },
 
         onError: (error) => {
-          console.error("TUS upload error:", error);
           setIsUploading(false);
           setProgress(0);
           setUploadError(error.message || "Upload failed");

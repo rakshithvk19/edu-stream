@@ -12,27 +12,13 @@ import { parseChaptersFromText } from "@/lib/utils/chapters";
 export const nativeFileValidationSchema = z
   .instanceof(File)
   .refine((file) => {
-    console.log("🟡 [ZOD VALIDATION] instanceof check passed, checking file size:", {
-      size: file.size,
-      isEmpty: file.size <= 0
-    });
     return file.size > 0;
   }, "File cannot be empty")
   .refine((file) => {
-    console.log("🟡 [ZOD VALIDATION] Checking file size limit:", {
-      size: file.size,
-      maxSize: MAX_FILE_SIZE,
-      withinLimit: file.size <= MAX_FILE_SIZE
-    });
     return file.size <= MAX_FILE_SIZE;
   }, "File size must be less than 3GB")
   .refine((file) => {
     const isSupported = SUPPORTED_VIDEO_TYPES.includes(file.type as typeof SUPPORTED_VIDEO_TYPES[number]);
-    console.log("🟡 [ZOD VALIDATION] Checking file type:", {
-      type: file.type,
-      supported: isSupported,
-      supportedTypes: SUPPORTED_VIDEO_TYPES
-    });
     return isSupported;
   }, {
     message:
@@ -94,26 +80,13 @@ export const reactHookFormSchema = z.object({
     .transform((val) => (val === "" ? "" : val)),
 
   file: z.any().superRefine((val, ctx) => {
-    console.log("🟡 [ZOD VALIDATION] File validation started:", {
-      value: val,
-      type: typeof val,
-      isFile: val instanceof File,
-      hasName: val?.name,
-      hasSize: val?.size,
-      hasType: val?.type,
-      constructor: val?.constructor?.name
-    });
-    
     // Then delegate to the actual validator
     const result = nativeFileValidationSchema.safeParse(val);
     
     if (!result.success) {
-      console.log("🟡 [ZOD VALIDATION] ❌ File validation failed:", result.error);
       result.error.issues.forEach(issue => {
         ctx.addIssue(issue);
       });
-    } else {
-      console.log("🟡 [ZOD VALIDATION] ✅ File validation passed");
     }
   }),
   

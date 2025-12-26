@@ -31,14 +31,6 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
   video: VideoRecord;
   uploadSession: CloudflareUploadSession;
 }> {
-  console.log("🟢 [VIDEO SERVICE] createVideo called with request:", {
-    title: request.title,
-    hasDescription: !!request.description,
-    uploadLength: request.uploadLength,
-    tusResumable: request.tusResumable,
-    hasChapters: !!request.chapters
-  });
-  
   // Validate input
   if (!request.title || request.title.trim().length === 0) {
     throw new Error("Video title is required");
@@ -67,7 +59,6 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
   }
 
   // Create upload session in Cloudflare
-  console.log("🟢 [VIDEO SERVICE] Creating Cloudflare upload session...");
   const uploadSession = await createCloudflareUploadSession({
     title: request.title.trim(),
     description: request.description?.trim(),
@@ -75,13 +66,7 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
     tusResumable: request.tusResumable,
   });
 
-  console.log("🟢 [VIDEO SERVICE] ✅ Upload session created:", {
-    streamMediaId: uploadSession.streamMediaId,
-    uploadUrl: uploadSession.uploadUrl
-  });
-  
   // Create video record in database
-  console.log("🟢 [VIDEO SERVICE] Creating video record in database...");
   const videoData: CreateVideoData = {
     title: request.title.trim(),
     description: request.description?.trim(),
@@ -92,13 +77,6 @@ export async function createVideo(request: CreateVideoRequest): Promise<{
   };
 
   const video = await insertVideo(videoData);
-  
-  console.log("🟢 [VIDEO SERVICE] ✅ Video record created:", {
-    id: video.id,
-    cloudflareVideoId: video.cloudflare_video_id,
-    title: video.title,
-    status: video.status
-  });
 
   return {
     video,
@@ -129,10 +107,6 @@ export async function getVideo(
         cloudflareInfo,
       };
     } catch (error) {
-      console.warn(
-        `Failed to get Cloudflare info for video ${videoId}:`,
-        error
-      );
       return video;
     }
   }
@@ -161,10 +135,6 @@ export async function fetchVideoByCloudflareId(
         cloudflareInfo,
       };
     } catch (error) {
-      console.warn(
-        `Failed to get Cloudflare info for video ${cloudflareVideoId}:`,
-        error
-      );
       return video;
     }
   }
@@ -254,7 +224,6 @@ export async function handleVideoDelete(
   try {
     await deleteCloudflareVideo(cloudflareVideoId);
   } catch (error) {
-    console.warn(`Failed to delete video from Cloudflare: ${error}`);
     // Continue with database deletion even if Cloudflare deletion fails
   }
 
@@ -283,10 +252,6 @@ export async function getVideoStreamingUrls(
       preview: getVideoPreviewUrl(cloudflareVideoId),
     };
   } catch (error) {
-    console.error(
-      `Failed to get streaming URLs for video ${cloudflareVideoId}:`,
-      error
-    );
     return null;
   }
 }

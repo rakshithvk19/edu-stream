@@ -27,7 +27,6 @@ export async function HEAD(
     const response = await handleTusHeadRequest(sessionId, req);
     return response;
   } catch (error) {
-    console.error("TUS HEAD error:", error);
     return Response.json(
       { error: "INTERNAL_ERROR", message: "Failed to get upload status" },
       { status: 500 }
@@ -48,7 +47,6 @@ export async function PATCH(
     const response = await handleTusPatchRequest(sessionId, req);
     return response;
   } catch (error) {
-    console.error("TUS PATCH error:", error);
     return Response.json(
       { error: "INTERNAL_ERROR", message: "Failed to upload chunk" },
       { status: 500 }
@@ -84,7 +82,6 @@ export async function GET(
       progress,
     });
   } catch (error) {
-    console.error("TUS GET error:", error);
     return Response.json(
       { error: "INTERNAL_ERROR", message: "Failed to get session info" },
       { status: 500 }

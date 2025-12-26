@@ -111,7 +111,6 @@ export async function getUploadSession(
   try {
     return await fetchUploadSession(sessionId);
   } catch (error) {
-    console.error(`Failed to get upload session ${sessionId}:`, error);
     return null;
   }
 }
@@ -159,7 +158,6 @@ export async function handleTusHeadRequest(
       headers,
     });
   } catch (error) {
-    console.error(`TUS HEAD error for session ${sessionId}:`, error);
     return new Response(null, { status: 500 });
   }
 }
@@ -231,16 +229,11 @@ export async function handleTusPatchRequest(
       const totalBytes = parseInt(uploadLength, 10);
 
       if (bytesUploaded >= totalBytes) {
-        console.log(`TUS upload complete for session ${sessionId}`);
-
         // Mark upload as completed
         try {
           await markUploadCompleted(session.videoId);
         } catch (error) {
-          console.error(
-            `Failed to mark upload completed for ${sessionId}:`,
-            error
-          );
+          // Failed to mark upload completed - non-critical
         }
       }
     }
@@ -250,13 +243,8 @@ export async function handleTusPatchRequest(
       headers,
     });
   } catch (error) {
-    console.error(`TUS PATCH error for session ${sessionId}:`, error);
-
-    // ✅ FIX: Don't mark as failed - TUS client will retry
+    // Don't mark as failed - TUS client will retry
     // Socket errors are transient and retries usually succeed
-    // Only log the error, don't update database status
-    
-    // REMOVED: await markUploadFailed(...)
     
     return new Response(null, { status: 500 });
   }
@@ -294,7 +282,6 @@ export async function getUploadProgress(
       percentage: Math.round((bytesUploaded / totalBytes) * 100),
     };
   } catch (error) {
-    console.error(`Failed to get upload progress for ${sessionId}:`, error);
     return null;
   }
 }
@@ -313,7 +300,6 @@ export async function cancelUpload(sessionId: string): Promise<void> {
     // Mark as failed in database
     await markUploadFailed(session.videoId, "Upload cancelled by user");
   } catch (error) {
-    console.error(`Failed to cancel upload ${sessionId}:`, error);
     throw error;
   }
 }
@@ -332,7 +318,6 @@ export async function fetchUploadStats(): Promise<{
   try {
     return await getUploadStats();
   } catch (error) {
-    console.error("Failed to get upload stats:", error);
     return {
       pending: 0,
       uploading: 0,
@@ -353,7 +338,6 @@ export async function handleCleanupFailedUploads(
   try {
     return await cleanupFailedUploads(olderThanHours);
   } catch (error) {
-    console.error("Failed to cleanup failed uploads:", error);
     return 0;
   }
 }

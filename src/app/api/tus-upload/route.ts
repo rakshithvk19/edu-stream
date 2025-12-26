@@ -32,7 +32,6 @@ export async function OPTIONS() {
  * POST - Initialize TUS upload session with validation
  */
 export async function POST(req: NextRequest) {
-  
   try {
     // 1. Validate TUS headers
     const rawHeaders = {
@@ -40,9 +39,6 @@ export async function POST(req: NextRequest) {
       "tus-resumable": req.headers.get("Tus-Resumable"),
       "upload-metadata": req.headers.get("Upload-Metadata"),
     };
-    
-
-
     const headerValidation = tusHeadersSchema.safeParse(rawHeaders);
     if (!headerValidation.success) {
       return Response.json(
@@ -61,20 +57,12 @@ export async function POST(req: NextRequest) {
       "upload-metadata": uploadMetadata,
     } = headerValidation.data;
 
-    console.log("🟠 [TUS API] ✅ Headers validated:", {
-      uploadLength,
-      tusResumable,
-      hasMetadata: !!uploadMetadata
-    });
-
     // 2. Parse and validate metadata
     let tusMetadata: TusMetadata;
 
-    console.log("🟠 [TUS API] Parsing TUS metadata...");
     try {
       tusMetadata = parseTusMetadata(uploadMetadata);
     } catch (error) {
-      console.error("🔴 [TUS API] Metadata parsing error:", error);
       return Response.json(
         {
           error: "VALIDATION_ERROR",
@@ -87,16 +75,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("🟠 [TUS API] ✅ Metadata parsed:", {
-      name: tusMetadata.name,
-      filename: tusMetadata.filename,
-      filetype: tusMetadata.filetype,
-      hasDescription: !!tusMetadata.description,
-      hasChapters: !!tusMetadata.chapters
-    });
-
     // 3. Additional validation
-    console.log("🟠 [TUS API] Validating metadata with Zod schema...");
     const validationInput = {
       filename: tusMetadata.filename || tusMetadata.name,
       filetype: tusMetadata.filetype || "video/mp4",
@@ -108,7 +87,6 @@ export async function POST(req: NextRequest) {
     const metadataValidation = tusMetadataSchema.safeParse(validationInput);
 
     if (!metadataValidation.success) {
-      console.error("🔴 [TUS API] Invalid metadata:", metadataValidation.error.issues);
       return Response.json(
         {
           error: "VALIDATION_ERROR",
@@ -119,15 +97,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("🟠 [TUS API] ✅ Metadata validation passed");
-
     // 4. Validate file type if provided
     if (tusMetadata.filetype) {
-      console.log("🟠 [TUS API] Validating file type:", tusMetadata.filetype);
       try {
         validateFileType(tusMetadata.filetype);
       } catch (error) {
-        console.error("🔴 [TUS API] Invalid file type:", error);
         return Response.json(
           {
             error: "INVALID_FILE_TYPE",
@@ -139,31 +113,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log("🟠 [TUS API] ✅ File type validated");
-
     // 5. Create video with upload session
-    console.log("🟠 [TUS API] Creating video with Cloudflare upload session...");
-    console.log("🟠 [TUS API] Request data:", {
-      title: tusMetadata.name,
-      hasDescription: !!tusMetadata.description,
-      uploadLength,
-      tusResumable,
-      hasChapters: !!tusMetadata.chapters
-    });
-    
     const { video, uploadSession } = await createVideo({
       title: tusMetadata.name,
       description: tusMetadata.description,
       uploadLength,
       tusResumable,
       chapters: tusMetadata.chapters,
-    });
-
-    console.log("🟠 [TUS API] ✅ Video created successfully:", {
-      videoId: video.cloudflare_video_id,
-      title: video.title,
-      uploadUrl: uploadSession.uploadUrl,
-      streamMediaId: uploadSession.streamMediaId
     });
 
     // 6. Create response headers
@@ -177,11 +133,6 @@ export async function POST(req: NextRequest) {
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error("🔴 [TUS API] POST error:", {
-      error: error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
 
     if (error instanceof Error && error.message.includes("Cloudflare")) {
       return Response.json(

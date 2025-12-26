@@ -17,14 +17,10 @@ export function verifyWebhookSignature(
   signature: string | null
 ): boolean {
   if (!process.env.CLOUDFLARE_STREAM_WEBHOOK_SECRET) {
-    console.warn(
-      "Webhook secret not configured - signature verification skipped"
-    );
     return true; // Allow webhook if no secret is configured
   }
 
   if (!signature) {
-    console.error("Webhook signature is required but not provided");
     return false;
   }
 
@@ -48,7 +44,6 @@ export function verifyWebhookSignature(
       Buffer.from(providedSignature, "hex")
     );
   } catch (error) {
-    console.error("Error verifying webhook signature:", error);
     return false;
   }
 }
@@ -96,14 +91,11 @@ export async function processWebhook(
 ): Promise<WebhookProcessingResult> {
   const videoId = video.uid;
 
-  console.log(`Processing webhook: ${eventType} for video ${videoId}`);
-
   try {
     return await handleVideoStatusChange(video);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    console.error(`Webhook processing failed for video ${videoId}:`, error);
 
     return {
       success: false,
@@ -123,14 +115,6 @@ async function handleVideoStatusChange(
   const { uid, status, duration, size } = video;
   const state = status.state;
 
-  console.log("🔔 [WEBHOOK] Processing video status change:", {
-    uid,
-    state,
-    pctComplete: status.pctComplete,
-    errorReasonCode: status.errorReasonCode,
-    errorReasonText: status.errorReasonText
-  });
-
   // Map Cloudflare states to our video statuses
   const statusMap: Record<string, VideoStatus> = {
     pendingupload: "pending",
@@ -141,7 +125,6 @@ async function handleVideoStatusChange(
 
   const newStatus = statusMap[state];
   if (!newStatus) {
-    console.warn(`Unknown video status: ${state} for video ${uid}`);
     return {
       success: false,
       videoId: uid,
@@ -163,12 +146,6 @@ async function handleVideoStatusChange(
       case "inprogress":
         await handleVideoStatusUpdate(uid, "processing");
 
-        if (status.pctComplete) {
-          console.log(
-            `Video ${uid} processing: ${status.pctComplete}% complete`
-          );
-        }
-
         return {
           success: true,
           videoId: uid,
@@ -185,8 +162,6 @@ async function handleVideoStatusChange(
           thumbnailUrl: `https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg`,
         });
 
-        console.log(`Video ${uid} is ready for playback`);
-
         return {
           success: true,
           videoId: uid,
@@ -196,7 +171,6 @@ async function handleVideoStatusChange(
       case "error":
         const errorMessage =
           status.errorReasonText || "Video processing failed";
-        console.error(`Video ${uid} processing failed: ${errorMessage}`);
 
         await handleVideoStatusUpdate(uid, "error");
 
@@ -218,7 +192,6 @@ async function handleVideoStatusChange(
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    console.error(`Failed to update video ${uid}:`, error);
 
     return {
       success: false,
@@ -289,11 +262,6 @@ export function handleWebhookError(
   const errorMessage =
     error instanceof Error ? error.message : "Unknown webhook error";
 
-  console.error("Webhook processing error:", {
-    error: errorMessage,
-    videoId,
-  });
-
   return {
     success: false,
     videoId: videoId || "unknown",
@@ -316,11 +284,6 @@ export async function processWebhookWithRetry(
       const result = await processWebhook(payload.eventType, payload.video);
 
       if (result.success) {
-        if (attempt > 1) {
-          console.log(
-            `Webhook processing succeeded on attempt ${attempt} for video ${result.videoId}`
-          );
-        }
         return result;
       }
 
@@ -337,11 +300,6 @@ export async function processWebhookWithRetry(
       if (attempt === maxRetries) {
         break;
       }
-
-      console.warn(
-        `Webhook processing attempt ${attempt} failed, retrying...`,
-        lastError.message
-      );
 
       // Wait before retrying
       const delay = Math.pow(2, attempt - 1) * 1000;

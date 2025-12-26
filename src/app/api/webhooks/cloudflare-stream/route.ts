@@ -10,20 +10,15 @@ import {
  * POST - Handle Cloudflare Stream webhooks
  */
 export async function POST(req: NextRequest) {
-  console.log("🔔 [WEBHOOK] POST request received from Cloudflare Stream");
-  
   try {
     // 1. Get raw body for signature verification
     const rawBody = await req.text();
-    console.log("🔔 [WEBHOOK] Raw body length:", rawBody.length);
-    console.log("🔔 [WEBHOOK] Raw body preview:", rawBody.substring(0, 200));
 
     // 2. Verify webhook signature if configured
     const signature = req.headers.get("cf-webhook-signature");
     const isValidSignature = verifyWebhookSignature(rawBody, signature);
 
     if (!isValidSignature) {
-      console.error("Invalid webhook signature");
       return Response.json(
         { error: "UNAUTHORIZED", message: "Invalid webhook signature" },
         { status: 401 }
@@ -35,7 +30,6 @@ export async function POST(req: NextRequest) {
     try {
       payload = parseWebhookPayload(rawBody);
     } catch (error) {
-      console.error("Failed to parse webhook payload:", error);
       return Response.json(
         {
           error: "INVALID_REQUEST",
@@ -46,16 +40,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Log incoming webhook for debugging
-    console.log(
-      `Received Cloudflare Stream webhook: ${payload.eventType} for video ${payload.video.uid}`
-    );
-
     // 5. Process webhook with retry logic
     const result = await processWebhookWithRetry(payload);
 
     if (!result.success) {
-      console.error(`Webhook processing failed: ${result.error}`);
       // Still return 200 to prevent webhook retries for application errors
       return Response.json({
         received: true,
@@ -64,10 +52,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    console.log(
-      `Webhook processed successfully: ${result.action} for video ${result.videoId}`
-    );
-
     return Response.json({
       received: true,
       processed: true,
@@ -75,7 +59,6 @@ export async function POST(req: NextRequest) {
       videoId: result.videoId,
     });
   } catch (error) {
-    console.error("Webhook processing error:", error);
     return Response.json(
       { error: "INTERNAL_ERROR", message: "Failed to process webhook" },
       { status: 500 }
@@ -97,7 +80,6 @@ export async function GET() {
       errors: configValidation.errors,
     });
   } catch (error) {
-    console.error("Webhook health check error:", error);
     return Response.json(
       { error: "INTERNAL_ERROR", message: "Failed to get webhook status" },
       { status: 500 }

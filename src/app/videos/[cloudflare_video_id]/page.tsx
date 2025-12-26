@@ -82,9 +82,6 @@ export default function VideoPlayerPage() {
             const validChapters = videoData.video.chapters.filter(
               (chapter, index) => {
                 if (!chapter) {
-                  console.warn(
-                    `Chapter at index ${index} is null or undefined`
-                  );
                   return false;
                 }
 
@@ -92,10 +89,6 @@ export default function VideoPlayerPage() {
                   typeof chapter.title !== "string" ||
                   chapter.title.trim().length === 0
                 ) {
-                  console.warn(
-                    `Chapter at index ${index} has invalid title:`,
-                    chapter.title
-                  );
                   return false;
                 }
 
@@ -103,10 +96,6 @@ export default function VideoPlayerPage() {
                   typeof chapter.timestamp !== "string" ||
                   chapter.timestamp.trim().length === 0
                 ) {
-                  console.warn(
-                    `Chapter at index ${index} has invalid timestamp:`,
-                    chapter.timestamp
-                  );
                   return false;
                 }
 
@@ -114,10 +103,6 @@ export default function VideoPlayerPage() {
                   typeof chapter.start_seconds !== "number" ||
                   chapter.start_seconds < 0
                 ) {
-                  console.warn(
-                    `Chapter at index ${index} has invalid start_seconds:`,
-                    chapter.start_seconds
-                  );
                   return false;
                 }
 
@@ -131,13 +116,10 @@ export default function VideoPlayerPage() {
                 (a, b) => a.start_seconds - b.start_seconds
               );
               setChapters(sortedChapters);
-              console.log(`Loaded ${sortedChapters.length} valid chapters`);
             } else {
-              console.warn("No valid chapters found in video metadata");
               setChapters([]);
             }
           } catch (chapterError) {
-            console.error("Failed to load chapters:", chapterError);
             setChapters([]);
           }
         } else {
@@ -244,7 +226,7 @@ export default function VideoPlayerPage() {
           url: window.location.href,
         });
       } catch (err) {
-        console.log("Share cancelled or failed:", err);
+        // Silent error - share functionality is optional
       }
     } else {
       // Fallback: copy URL to clipboard

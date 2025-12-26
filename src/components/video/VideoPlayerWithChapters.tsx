@@ -158,7 +158,7 @@ const VideoPlayerWithChapters = forwardRef<
 
         markersAddedRef.current = true;
       } catch (error) {
-        console.error("Failed to add chapter markers:", error);
+        // Failed to add chapter markers - silently fail
       }
     },
     [chapters, videoDuration]
