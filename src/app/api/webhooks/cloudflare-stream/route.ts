@@ -3,7 +3,6 @@ import {
   verifyWebhookSignature,
   parseWebhookPayload,
   processWebhookWithRetry,
-  validateWebhookConfig,
 } from "@/services/WebhookService";
 
 /**
@@ -65,45 +64,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
-/**
- * GET - Webhook health check / configuration info
- */
-export async function GET() {
-  try {
-    const configValidation = validateWebhookConfig();
-
-    return Response.json({
-      status: "active",
-      configured: configValidation.isValid,
-      warnings: configValidation.warnings,
-      errors: configValidation.errors,
-    });
-  } catch (error) {
-    return Response.json(
-      { error: "INTERNAL_ERROR", message: "Failed to get webhook status" },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * Handle unsupported methods
- */
-function handleMethodNotAllowed(allowedMethods: string[]): Response {
-  const response = Response.json(
-    {
-      error: "METHOD_NOT_ALLOWED",
-      message: `Method not allowed. Allowed methods: ${allowedMethods.join(
-        ", "
-      )}`,
-    },
-    { status: 405 }
-  );
-  response.headers.set("Allow", allowedMethods.join(", "));
-  return response;
-}
-
-export const PUT = () => handleMethodNotAllowed(["POST", "GET"]);
-export const DELETE = () => handleMethodNotAllowed(["POST", "GET"]);
-export const PATCH = () => handleMethodNotAllowed(["POST", "GET"]);

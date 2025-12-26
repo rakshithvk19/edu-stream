@@ -1,9 +1,6 @@
 import {
   fetchUploadSession,
   markUploadCompleted,
-  markUploadFailed,
-  cleanupFailedUploads,
-  getUploadStats,
 } from "@/repositories/UploadRepository";
 import {
   parseUploadMetadata,
@@ -11,41 +8,7 @@ import {
 } from "@/services/CloudflareService";
 import { MAX_FILE_SIZE, TUS_VERSION } from "@/lib/constants/upload";
 import type { UploadSession } from "@/types/repositories/uploadRepository";
-import type {
-  TusHeaders,
-  TusMetadata,
-  UploadProgress,
-} from "@/types/services/upload";
-
-/**
- * Parse TUS headers and validate them
- */
-export function parseTusHeaders(headers: Headers): TusHeaders {
-  const uploadLength = headers.get("Upload-Length");
-  const tusResumable = headers.get("Tus-Resumable");
-  const uploadMetadata = headers.get("Upload-Metadata");
-
-  if (!uploadLength) {
-    throw new Error("Upload-Length header is required");
-  }
-
-  const length = parseInt(uploadLength, 10);
-  if (isNaN(length) || length <= 0) {
-    throw new Error("Upload-Length must be a positive number");
-  }
-
-  if (length > MAX_FILE_SIZE) {
-    throw new Error(
-      `File size exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes`
-    );
-  }
-
-  return {
-    "upload-length": length,
-    "tus-resumable": tusResumable || TUS_VERSION,
-    "upload-metadata": uploadMetadata || undefined,
-  };
-}
+import type { TusMetadata } from "@/types/services/upload";
 
 /**
  * Parse and validate TUS metadata
@@ -247,98 +210,6 @@ export async function handleTusPatchRequest(
     // Socket errors are transient and retries usually succeed
     
     return new Response(null, { status: 500 });
-  }
-}
-/**
- * Get upload progress information
- */
-export async function getUploadProgress(
-  sessionId: string
-): Promise<UploadProgress | null> {
-  const session = await fetchUploadSession(sessionId);
-
-  if (!session) {
-    return null;
-  }
-
-  try {
-    const response = await forwardTusRequest(session.cloudflareUrl, "HEAD", {
-      "Tus-Resumable": TUS_VERSION,
-    });
-
-    const uploadOffset = response.headers.get("Upload-Offset");
-    const uploadLength = response.headers.get("Upload-Length");
-
-    if (!uploadOffset || !uploadLength) {
-      return null;
-    }
-
-    const bytesUploaded = parseInt(uploadOffset, 10);
-    const totalBytes = parseInt(uploadLength, 10);
-
-    return {
-      bytesUploaded,
-      totalBytes,
-      percentage: Math.round((bytesUploaded / totalBytes) * 100),
-    };
-  } catch (error) {
-    return null;
-  }
-}
-
-/**
- * Cancel upload session
- */
-export async function cancelUpload(sessionId: string): Promise<void> {
-  const session = await fetchUploadSession(sessionId);
-
-  if (!session) {
-    throw new Error("Upload session not found");
-  }
-
-  try {
-    // Mark as failed in database
-    await markUploadFailed(session.videoId, "Upload cancelled by user");
-  } catch (error) {
-    throw error;
-  }
-}
-
-/**
- * Get upload statistics
- */
-export async function fetchUploadStats(): Promise<{
-  pending: number;
-  uploading: number;
-  processing: number;
-  ready: number;
-  error: number;
-  total: number;
-}> {
-  try {
-    return await getUploadStats();
-  } catch (error) {
-    return {
-      pending: 0,
-      uploading: 0,
-      processing: 0,
-      ready: 0,
-      error: 0,
-      total: 0,
-    };
-  }
-}
-
-/**
- * Clean up old failed uploads
- */
-export async function handleCleanupFailedUploads(
-  olderThanHours: number = 24
-): Promise<number> {
-  try {
-    return await cleanupFailedUploads(olderThanHours);
-  } catch (error) {
-    return 0;
   }
 }
 

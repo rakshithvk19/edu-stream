@@ -1,15 +1,5 @@
 import type { VideoRecord } from "@/types/repositories/videoRepository";
 
-export interface VideoStreamingResponse {
-  video: VideoRecord;
-  streamingUrls: {
-    hls: string;
-    dash?: string;
-    thumbnail: string;
-    preview?: string;
-  };
-}
-
 export interface VideoListResponse {
   videos: VideoRecord[];
   pagination: {

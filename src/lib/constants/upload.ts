@@ -7,18 +7,7 @@ export const MAX_DURATION_SECONDS = 3600; // 1 hour
 
 // TUS Protocol constants
 export const TUS_VERSION = '1.0.0';
-export const TUS_EXTENSIONS = ['creation', 'expiration'];
 export const TUS_RETRY_DELAYS = [0, 3000, 5000, 10000, 20000];
-
-// CORS constants
-export const CORS_ALLOWED_METHODS = ['GET', 'POST', 'PATCH', 'HEAD', 'OPTIONS', 'DELETE'];
-export const CORS_ALLOWED_HEADERS = ['*'];
-export const CORS_EXPOSED_HEADERS = ['*'];
-
-// Rate limiting constants
-export const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-export const RATE_LIMIT_MAX_REQUESTS = 100;
-export const RATE_LIMIT_MESSAGE = 'Too many requests. Please try again later.';
 
 // Chapter-related constants
 export const MAX_CHAPTERS = 20;

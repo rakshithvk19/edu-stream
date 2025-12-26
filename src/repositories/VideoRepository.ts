@@ -92,29 +92,6 @@ export async function getVideoByCloudflareId(
 }
 
 /**
- * Get video by ID
- */
-export async function getVideoById(id: string): Promise<VideoRecord | null> {
-  const supabase = createSupabaseClient();
-
-  const { data, error } = await supabase
-    .from("videos")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) {
-    if (error.code === "PGRST116") {
-      // No rows returned
-      return null;
-    }
-    throw new Error(`Failed to get video: ${error.message}`);
-  }
-
-  return data;
-}
-
-/**
  * Update video by Cloudflare video ID
  */
 export async function updateVideoByCloudflareId(
@@ -140,89 +117,6 @@ export async function updateVideoByCloudflareId(
   }
 
   return data;
-}
-
-/**
- * Update video status
- */
-export async function updateVideoStatus(
-  cloudflareVideoId: string,
-  status: VideoStatus
-): Promise<void> {
-  await updateVideoByCloudflareId(cloudflareVideoId, { status });
-}
-
-/**
- * Get all videos with pagination
- */
-export async function getVideos(
-  page: number = 1,
-  limit: number = 10
-): Promise<{ videos: VideoRecord[]; total: number }> {
-  const supabase = createSupabaseClient();
-  const offset = (page - 1) * limit;
-
-  // Get total count
-  const { count, error: countError } = await supabase
-    .from("videos")
-    .select("*", { count: "exact", head: true });
-
-  if (countError) {
-    throw new Error(`Failed to get video count: ${countError.message}`);
-  }
-
-  // Get videos
-  const { data: videos, error } = await supabase
-    .from("videos")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error) {
-    throw new Error(`Failed to get videos: ${error.message}`);
-  }
-
-  return {
-    videos: videos || [],
-    total: count || 0,
-  };
-}
-
-/**
- * Delete video by Cloudflare video ID
- */
-export async function deleteVideo(cloudflareVideoId: string): Promise<void> {
-  const supabase = createSupabaseClient();
-
-  const { error } = await supabase
-    .from("videos")
-    .delete()
-    .eq("cloudflare_video_id", cloudflareVideoId);
-
-  if (error) {
-    throw new Error(`Failed to delete video: ${error.message}`);
-  }
-}
-
-/**
- * Get videos by status
- */
-export async function getVideosByStatus(
-  status: VideoStatus
-): Promise<VideoRecord[]> {
-  const supabase = createSupabaseClient();
-
-  const { data, error } = await supabase
-    .from("videos")
-    .select("*")
-    .eq("status", status)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(`Failed to get videos by status: ${error.message}`);
-  }
-
-  return data || [];
 }
 
 /**

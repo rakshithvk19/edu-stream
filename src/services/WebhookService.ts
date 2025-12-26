@@ -203,74 +203,6 @@ async function handleVideoStatusChange(
 }
 
 /**
- * Get webhook processing statistics
- */
-export async function getWebhookStats(): Promise<{
-  totalProcessed: number;
-  successfulUpdates: number;
-  failedUpdates: number;
-  lastProcessedAt?: string;
-}> {
-  // This is a placeholder - in a real implementation, you might want to
-  // store webhook processing stats in a separate table or use metrics
-  return {
-    totalProcessed: 0,
-    successfulUpdates: 0,
-    failedUpdates: 0,
-  };
-}
-
-/**
- * Validate webhook configuration
- */
-export function validateWebhookConfig(): {
-  isValid: boolean;
-  warnings: string[];
-  errors: string[];
-} {
-  const warnings: string[] = [];
-  const errors: string[] = [];
-
-  if (!process.env.CLOUDFLARE_STREAM_WEBHOOK_SECRET) {
-    warnings.push(
-      "Webhook secret not configured - signature verification disabled"
-    );
-  }
-
-  if (!process.env.CLOUDFLARE_API_TOKEN) {
-    errors.push("Cloudflare API token not configured");
-  }
-
-  if (!process.env.CLOUDFLARE_ACCOUNT_ID) {
-    errors.push("Cloudflare account ID not configured");
-  }
-
-  return {
-    isValid: errors.length === 0,
-    warnings,
-    errors,
-  };
-}
-
-/**
- * Handle webhook processing errors
- */
-export function handleWebhookError(
-  error: unknown,
-  videoId?: string
-): WebhookProcessingResult {
-  const errorMessage =
-    error instanceof Error ? error.message : "Unknown webhook error";
-
-  return {
-    success: false,
-    videoId: videoId || "unknown",
-    action: "webhook_error",
-    error: errorMessage,
-  };
-}
-
-/**
  * Process webhook with retry logic
  */
 export async function processWebhookWithRetry(
@@ -307,5 +239,12 @@ export async function processWebhookWithRetry(
     }
   }
 
-  return handleWebhookError(lastError, payload.video.uid);
+  const errorMessage = lastError instanceof Error ? lastError.message : "Unknown webhook error";
+  
+  return {
+    success: false,
+    videoId: payload.video.uid || "unknown",
+    action: "webhook_error",
+    error: errorMessage,
+  };
 }

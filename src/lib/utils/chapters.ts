@@ -50,25 +50,6 @@ export function parseTimestampToSeconds(timestamp: string): number {
 }
 
 /**
- * Convert seconds back to timestamp string
- */
-export function secondsToTimestamp(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-  } else {
-    return `${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
-  }
-}
-
-/**
  * Parse chapters from text input
  * Format: "MM:SS Chapter Title" or "HH:MM:SS Chapter Title"
  */
@@ -237,63 +218,6 @@ export function parseChaptersFromText(chaptersText: string): {
   }
 
   return { chapters, errors };
-}
-
-/**
- * Convert chapters array to text format for display
- */
-export function chaptersToText(chapters: Chapter[]): string {
-  return chapters
-    .sort((a, b) => a.start_seconds - b.start_seconds)
-    .map((chapter) => `${chapter.timestamp} ${chapter.title}`)
-    .join("\n");
-}
-
-/**
- * Calculate end seconds for each chapter dynamically
- * Last chapter ends at video duration (if provided) or has no end
- */
-export function calculateChapterEndTimes(
-  chapters: Chapter[],
-  videoDurationSec?: number
-): (Chapter & { end_seconds?: number })[] {
-  const sortedChapters = [...chapters].sort(
-    (a, b) => a.start_seconds - b.start_seconds
-  );
-
-  return sortedChapters.map((chapter, index) => {
-    const nextChapter = sortedChapters[index + 1];
-    const end_seconds = nextChapter
-      ? nextChapter.start_seconds
-      : videoDurationSec;
-
-    return {
-      ...chapter,
-      end_seconds,
-    };
-  });
-}
-
-/**
- * Validate that chapters don't exceed video duration
- */
-export function validateChaptersAgainstDuration(
-  chapters: Chapter[],
-  videoDurationSec: number
-): ChapterValidationError[] {
-  const errors: ChapterValidationError[] = [];
-
-  chapters.forEach((chapter, index) => {
-    if (chapter.start_seconds > videoDurationSec) {
-      errors.push({
-        line: index + 1,
-        error: `Chapter timestamp ${chapter.timestamp} exceeds video duration`,
-        rawLine: `${chapter.timestamp} ${chapter.title}`,
-      });
-    }
-  });
-
-  return errors;
 }
 
 /**
