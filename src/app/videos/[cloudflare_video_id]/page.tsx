@@ -16,7 +16,7 @@ import VideoPlayerWithChapters from "@/components/video/VideoPlayerWithChapters"
 import ChaptersSidebar from "@/components/video/ChaptersSidebar";
 import ChaptersBottomSheet from "@/components/video/ChaptersBottomSheet";
 import { formatVideoDuration } from "@/services/VideoStreamingService";
-import type { Chapter } from "@/lib/utils/chapters";
+import type { Chapter } from "@/types";
 import type {
   VideoDetailsResponse,
   VideoStreamUrlsResponse,
@@ -80,7 +80,7 @@ export default function VideoPlayerPage() {
           try {
             // Validate that chapters have the expected structure
             const validChapters = videoData.video.chapters.filter(
-              (chapter, index) => {
+              (chapter) => {
                 if (!chapter) {
                   return false;
                 }
@@ -119,7 +119,7 @@ export default function VideoPlayerPage() {
             } else {
               setChapters([]);
             }
-          } catch (chapterError) {
+          } catch (_chapterError) {
             setChapters([]);
           }
         } else {
@@ -225,7 +225,7 @@ export default function VideoPlayerPage() {
           text: video.description || `Watch "${video.title}" on EduStream`,
           url: window.location.href,
         });
-      } catch (err) {
+      } catch (_err) {
         // Silent error - share functionality is optional
       }
     } else {

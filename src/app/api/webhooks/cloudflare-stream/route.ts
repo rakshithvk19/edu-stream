@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       action: result.action,
       videoId: result.videoId,
     });
-  } catch (error) {
+  } catch (_error) {
     return Response.json(
       { error: "INTERNAL_ERROR", message: "Failed to process webhook" },
       { status: 500 }

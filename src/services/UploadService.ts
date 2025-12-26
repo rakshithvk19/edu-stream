@@ -73,7 +73,7 @@ export async function getUploadSession(
 ): Promise<UploadSession | null> {
   try {
     return await fetchUploadSession(sessionId);
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -120,7 +120,7 @@ export async function handleTusHeadRequest(
       status: response.status,
       headers,
     });
-  } catch (error) {
+  } catch {
     return new Response(null, { status: 500 });
   }
 }
@@ -195,7 +195,7 @@ export async function handleTusPatchRequest(
         // Mark upload as completed
         try {
           await markUploadCompleted(session.videoId);
-        } catch (error) {
+        } catch (_error) {
           // Failed to mark upload completed - non-critical
         }
       }
@@ -205,7 +205,7 @@ export async function handleTusPatchRequest(
       status: response.status,
       headers,
     });
-  } catch (error) {
+  } catch (_error) {
     // Don't mark as failed - TUS client will retry
     // Socket errors are transient and retries usually succeed
     

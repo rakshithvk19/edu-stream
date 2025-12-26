@@ -62,7 +62,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         videoRef.current.appendChild(videoElement);
 
         // Video.js configuration
-        const options: any = {
+        const options: videojs.PlayerOptions = {
           controls,
           fluid,
           responsive: true,

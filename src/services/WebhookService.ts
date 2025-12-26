@@ -43,7 +43,7 @@ export function verifyWebhookSignature(
       Buffer.from(expectedSignature, "hex"),
       Buffer.from(providedSignature, "hex")
     );
-  } catch (error) {
+  } catch {
     return false;
   }
 }

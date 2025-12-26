@@ -4,7 +4,6 @@ import {
   MAX_TITLE_LENGTH,
   MAX_DESCRIPTION_LENGTH,
   SUPPORTED_VIDEO_TYPES,
-  MAX_CHAPTER_TITLE_LENGTH,
 } from "@/lib/constants/upload";
 import { parseChaptersFromText } from "@/lib/utils/chapters";
 

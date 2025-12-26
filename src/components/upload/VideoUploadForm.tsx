@@ -84,8 +84,6 @@ export default function VideoUploadForm({
 
   const {
     ref: fileRef,
-    onChange: registerOnChange,
-    ...fileRegister
   } = register("file");
 
   // Custom onChange handler that transforms FileList to File

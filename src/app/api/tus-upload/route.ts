@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Create video with upload session
-    const { video, uploadSession } = await createVideo({
+    const { uploadSession } = await createVideo({
       title: tusMetadata.name,
       description: tusMetadata.description,
       uploadLength,

@@ -5,7 +5,6 @@ import {
   CreateVideoData,
   UpdateVideoData,
 } from "../types/repositories/videoRepository";
-import { VideoStatus } from "../types/enum";
 
 /**
  * Create Supabase client for database operations

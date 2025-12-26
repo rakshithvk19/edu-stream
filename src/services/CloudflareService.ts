@@ -62,11 +62,11 @@ export async function createCloudflareUploadSession(
  */
 export function buildUploadMetadata(data: Record<string, string>): string {
   return Object.entries(data)
-    .filter(([_key, value]) => value !== undefined && value !== "")
+    .filter(([, value]) => value !== undefined && value !== "")
     .map(([key, value]) => {
       try {
         return `${key} ${btoa(value)}`; // Base64 encode values
-      } catch (_error) {
+      } catch {
         return `${key} ${value}`; // Fallback to plain text
       }
     })
@@ -85,12 +85,12 @@ export function parseUploadMetadata(metadata: string): Record<string, string> {
       if (key && value) {
         try {
           result[key] = atob(value); // Base64 decode
-        } catch (_e) {
+        } catch {
           result[key] = value; // Use as-is if decode fails
         }
       }
     });
-  } catch (error) {
+  } catch {
     throw new Error("Invalid metadata format");
   }
 

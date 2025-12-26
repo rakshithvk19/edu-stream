@@ -6,13 +6,13 @@ import VideoUploadForm from "@/components/upload/VideoUploadForm";
 
 export default function UploadPage() {
   // Handle upload success callback
-  const handleUploadSuccess = (videoId: string) => {
+  const handleUploadSuccess = (_videoId: string) => {
     // You can add additional success handling here if needed
     // For example: tracking analytics, showing notifications, etc.
   };
 
   // Handle upload error callback
-  const handleUploadError = (error: string) => {
+  const handleUploadError = (_error: string) => {
     // You can add additional error handling here if needed
     // For example: error tracking, notifications, etc.
   };
